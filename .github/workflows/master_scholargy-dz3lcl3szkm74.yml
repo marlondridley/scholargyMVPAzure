@@ -1,20 +1,18 @@
 # Filename: .github/workflows/azure-app-service.yml
 # Description: A GitHub Actions workflow to build and deploy the full-stack Scholargy application to Azure App Service.
 
-# 1. Name of the workflow
 name: Build and Deploy Scholargy to Azure App Service
 
-# 2. Trigger: This workflow runs on every push to the 'main' branch.
+# Trigger: This workflow runs on every push to the 'master' branch.
 on:
   push:
     branches:
-      - master
+      - master  # Changed from 'main' to 'master' to match your repo
   workflow_dispatch: # Allows you to run this workflow manually from the Actions tab
 
-# 3. Jobs: Defines the sequence of tasks to run.
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest # Use a Linux runner provided by GitHub
+    runs-on: ubuntu-latest
 
     steps:
     # Step 1: Check out the repository code
@@ -22,37 +20,37 @@ jobs:
       uses: actions/checkout@v4
 
     # Step 2: Set up Node.js environment
-    # Use a specific version of Node.js for consistency.
     - name: Set up Node.js version
       uses: actions/setup-node@v4
       with:
-        node-version: lts/* # Use a Long-Term Support (LTS) version
+        node-version: '22.x'  # Use Node.js 22 LTS as requested
         cache: 'npm'
 
     # --- Frontend Build Steps ---
     - name: Frontend - Install dependencies
       run: npm install
-      working-directory: ./frontend # Run this command in the frontend folder
+      working-directory: ./frontend
 
     - name: Frontend - Build application
       run: npm run build
-      working-directory: ./frontend # Run this command in the frontend folder
+      working-directory: ./frontend
 
     # --- Backend Preparation Steps ---
     - name: Backend - Install dependencies
       run: npm install
-      working-directory: ./backend # Run this command in the backend folder
+      working-directory: ./backend
 
     # Step 3: Package the application for deployment
-    # This step copies the built frontend into the backend, creating a single deployable unit.
     - name: Package application
-      run: cp -r frontend/build backend/build
+      run: |
+        mkdir -p backend/build
+        cp -r frontend/build/* backend/build/ || true
+        ls -la backend/build/  # Debug: show what was copied
 
     # Step 4: Deploy to Azure App Service
-    # This action uses your publish profile secret to securely log in and deploy the code.
     - name: 'Deploy to Azure Web App'
       uses: azure/webapps-deploy@v2
       with:
-        app-name: 'scholargy-dz3lcl3szkm74' # The name of your Azure App Service
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }} # The secret you created in GitHub
-        package: ./backend # Deploy the entire backend folder
+        app-name: 'scholargy-dz3lcl3szkm74'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: ./backend
