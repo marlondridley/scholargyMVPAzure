@@ -1,5 +1,6 @@
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 console.log('🚀 Starting Scholargy MVP on Azure App Service...');
 
@@ -11,7 +12,12 @@ process.env.PORT = process.env.PORT || 8080;
 const serverPath = path.join(__dirname, 'backend', 'server.js');
 console.log(`📡 Starting backend server at: ${serverPath}`);
 
-const server = spawn('node', [serverPath], {
+// Check if we're in the deployment directory structure
+const isDeployment = fs.existsSync(path.join(__dirname, 'server.js'));
+const actualServerPath = isDeployment ? path.join(__dirname, 'server.js') : serverPath;
+console.log(`📡 Using server path: ${actualServerPath}`);
+
+const server = spawn('node', [actualServerPath], {
   stdio: 'inherit',
   env: process.env
 });
