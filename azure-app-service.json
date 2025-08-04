@@ -8,10 +8,11 @@
   "sku": "B1",
   "configuration": {
     "nodeVersion": "22.17.1",
-    "startupCommand": "npm start",
+    "startupCommand": "node --version && npm start",
     "environmentVariables": {
       "NODE_ENV": "production",
-      "PORT": "8080"
+      "PORT": "8080",
+      "WEBSITE_NODE_DEFAULT_VERSION": "22.17.1"
     }
   },
   "deployment": {

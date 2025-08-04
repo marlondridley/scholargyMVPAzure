@@ -28,15 +28,11 @@ jobs:
         cache: 'npm'
         cache-dependency-path: '**/package-lock.json'
 
-    # --- Root Dependencies (for Azure) ---
-    - name: Install root dependencies
+    # --- Install Dependencies ---
+    - name: Install dependencies
       run: npm install
 
     # --- Frontend Build Steps ---
-    - name: Install frontend dependencies
-      run: npm install
-      working-directory: frontend
-
     - name: Build frontend
       run: CI=false npm run build
       working-directory: frontend
@@ -47,13 +43,14 @@ jobs:
         rm -rf deploy
         mkdir -p deploy/public
 
-        # Copy backend source (Oryx will handle npm install)
+        # Copy backend source files (but not package.json)
         cp -r backend/* deploy/
+        rm -f deploy/package.json  # Remove backend package.json
 
-        # Copy frontend build into backend public folder
+        # Copy frontend build into public folder
         cp -r frontend/build/* deploy/public/
 
-        # Copy root-level config files
+        # Copy root-level config files (with dependencies)
         cp package*.json deploy/
         cp startup.js deploy/
         cp web.config deploy/
@@ -61,8 +58,8 @@ jobs:
 
         echo "Deployment package contents:"
         ls -la deploy/
-        echo "📁 Backend files (Oryx will install dependencies):"
-        ls -la deploy/
+        echo "📁 Root package.json (with all dependencies):"
+        cat deploy/package.json | grep -A 10 '"dependencies"'
         echo "📁 Public directory (frontend build):"
         ls -la deploy/public/
 

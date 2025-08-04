@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 console.log('🚀 Starting Scholargy MVP on Azure App Service...');
+console.log(`📦 Node.js version: ${process.version}`);
 
 // Set environment variables for Azure
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
@@ -12,13 +13,8 @@ process.env.PORT = process.env.PORT || 8080;
 console.log('📦 Dependencies will be installed by Azure Oryx');
 
 // Start the backend server
-const serverPath = path.join(__dirname, 'backend', 'server.js');
+const serverPath = path.join(__dirname, 'server.js');
 console.log(`📡 Starting backend server at: ${serverPath}`);
-
-// Check if we're in the deployment directory structure
-const isDeployment = fs.existsSync(path.join(__dirname, 'server.js'));
-const actualServerPath = isDeployment ? path.join(__dirname, 'server.js') : serverPath;
-console.log(`📡 Using server path: ${actualServerPath}`);
 
 // Check if node_modules exists
 const nodeModulesPath = path.join(__dirname, 'node_modules');
@@ -30,7 +26,7 @@ if (fs.existsSync(nodeModulesPath)) {
   console.log(`📁 Current directory contents: ${fs.readdirSync(__dirname).join(', ')}`);
 }
 
-const server = spawn('node', [actualServerPath], {
+const server = spawn('node', [serverPath], {
   stdio: 'inherit',
   env: process.env
 });

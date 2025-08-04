@@ -1,2 +1,2 @@
 [config]
-command = npm start 
+command = node --version && npm start 
