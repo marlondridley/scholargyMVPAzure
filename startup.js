@@ -13,7 +13,7 @@ process.env.PORT = process.env.PORT || 8080;
 console.log('📦 Dependencies will be installed by Azure Oryx');
 
 // Start the backend server
-const serverPath = path.join(__dirname, 'server.js');
+const serverPath = path.join(__dirname, 'backend', 'server.js');
 console.log(`📡 Starting backend server at: ${serverPath}`);
 
 // Check if node_modules exists

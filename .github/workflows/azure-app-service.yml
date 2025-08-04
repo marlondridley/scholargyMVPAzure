@@ -43,14 +43,14 @@ jobs:
         rm -rf deploy
         mkdir -p deploy/public
 
-        # Copy backend source files (but not package.json)
+        # Copy backend source files (excluding package.json)
         cp -r backend/* deploy/
-        rm -f deploy/package.json  # Remove backend package.json
+        rm -f deploy/package.json deploy/package-lock.json  # Remove backend package files
 
         # Copy frontend build into public folder
         cp -r frontend/build/* deploy/public/
 
-        # Copy root-level config files (with dependencies)
+        # Copy root-level config files (with dependencies) - THIS IS THE ONLY package.json
         cp package*.json deploy/
         cp startup.js deploy/
         cp web.config deploy/
@@ -60,6 +60,8 @@ jobs:
         ls -la deploy/
         echo "📁 Root package.json (with all dependencies):"
         cat deploy/package.json | grep -A 10 '"dependencies"'
+        echo "📁 Verifying express is in dependencies:"
+        grep -i express deploy/package.json
         echo "📁 Public directory (frontend build):"
         ls -la deploy/public/
 
