@@ -1,0 +1,79 @@
+# Filename: .github/workflows/azure-app-service.yml
+# Description: A GitHub Actions workflow to build and deploy the full-stack Scholargy application to Azure App Service.
+
+name: Build and Deploy Scholargy to Azure App Service
+
+# Trigger: This workflow runs on every push to the 'master' branch.
+on:
+  push:
+    branches:
+      - master  # Changed from 'main' to 'master' to match your repo
+  workflow_dispatch: # Allows you to run this workflow manually from the Actions tab
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Check out the repository code
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Step 2: Set up Node.js environment
+    - name: Set up Node.js version
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22.x'  # Use Node.js 22 LTS as requested
+        cache: 'npm'
+        cache-dependency-path: '**/package-lock.json'
+
+    # --- Root Dependencies ---
+    - name: Root - Install dependencies
+      run: npm ci
+
+    # --- Frontend Build Steps ---
+    - name: Frontend - Install dependencies
+      run: npm ci
+      working-directory: ./frontend
+
+    - name: Frontend - Build application
+      run: npm run build
+      working-directory: ./frontend
+
+    # --- Backend Preparation Steps ---
+    - name: Backend - Install dependencies
+      run: npm ci
+      working-directory: ./backend
+
+    # Step 3: Package the application for deployment
+    - name: Package application for Azure
+      run: |
+        # Create deployment directory
+        mkdir -p deploy
+        
+        # Copy backend files
+        cp -r backend/* deploy/
+        
+        # Copy built frontend to backend's public directory
+        mkdir -p deploy/public
+        cp -r frontend/build/* deploy/public/
+        
+        # Copy root configuration files
+        cp package*.json deploy/
+        cp startup.js deploy/
+        cp web.config deploy/
+        cp .deployment deploy/
+        
+        # Show deployment structure
+        echo "📁 Deployment package structure:"
+        ls -la deploy/
+        echo "📁 Public directory (frontend build):"
+        ls -la deploy/public/
+
+    # Step 4: Deploy to Azure App Service
+    - name: 'Deploy to Azure Web App'
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: 'scholargy-dz3lcl3szkm74'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: ./deploy 
