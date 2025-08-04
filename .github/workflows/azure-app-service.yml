@@ -37,35 +37,28 @@ jobs:
       run: CI=false npm run build
       working-directory: frontend
 
-    # --- Backend Dependencies ---
-    - name: Install backend dependencies
-      run: npm install
-      working-directory: backend
-
     # Step 3: Package the application for deployment
     - name: Package application for Azure
       run: |
-        # Create deployment directory
-        mkdir -p deploy
-        
-        # Copy backend files (including node_modules)
-        cp -r backend/* deploy/
-        
-        # Copy built frontend to backend's public directory
+        rm -rf deploy
         mkdir -p deploy/public
+
+        # Copy backend source (Oryx will handle npm install)
+        cp -r backend/* deploy/
+
+        # Copy frontend build into backend public folder
         cp -r frontend/build/* deploy/public/
-        
-        # Copy root configuration files
+
+        # Copy root-level config files
         cp package*.json deploy/
         cp startup.js deploy/
         cp web.config deploy/
         cp .deployment deploy/
-        
-        # Show deployment structure
-        echo "📁 Deployment package structure:"
+
+        echo "Deployment package contents:"
         ls -la deploy/
-        echo "📁 Backend node_modules (should exist):"
-        ls -la deploy/node_modules/ | head -10
+        echo "📁 Backend files (Oryx will install dependencies):"
+        ls -la deploy/
         echo "📁 Public directory (frontend build):"
         ls -la deploy/public/
 
