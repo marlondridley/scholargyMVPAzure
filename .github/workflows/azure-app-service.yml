@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - main  # Updated to match your current branch
+      - master  # Also trigger on master for compatibility
   workflow_dispatch: # Allows you to run this workflow manually from the Actions tab
 
 jobs:
@@ -36,13 +37,18 @@ jobs:
       run: CI=false npm run build
       working-directory: frontend
 
+    # --- Backend Dependencies ---
+    - name: Install backend dependencies
+      run: npm install
+      working-directory: backend
+
     # Step 3: Package the application for deployment
     - name: Package application for Azure
       run: |
         # Create deployment directory
         mkdir -p deploy
         
-        # Copy backend files
+        # Copy backend files (including node_modules)
         cp -r backend/* deploy/
         
         # Copy built frontend to backend's public directory
@@ -58,6 +64,8 @@ jobs:
         # Show deployment structure
         echo "📁 Deployment package structure:"
         ls -la deploy/
+        echo "📁 Backend node_modules (should exist):"
+        ls -la deploy/node_modules/ | head -10
         echo "📁 Public directory (frontend build):"
         ls -la deploy/public/
 
