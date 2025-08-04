@@ -29,8 +29,16 @@ jobs:
         cache-dependency-path: '**/package-lock.json'
 
     # --- Install Dependencies ---
-    - name: Install dependencies
+    - name: Install root dependencies
       run: npm install
+      
+    - name: Install frontend dependencies
+      run: npm install
+      working-directory: frontend
+      
+    - name: Install backend dependencies
+      run: npm install
+      working-directory: backend
 
     # --- Frontend Build Steps ---
     - name: Build frontend
@@ -43,7 +51,7 @@ jobs:
         rm -rf deploy
         mkdir -p deploy/public
 
-        # Copy backend source files (excluding package.json)
+        # Copy backend source files (including server.js as main entry point)
         cp -r backend/* deploy/
         rm -f deploy/package.json deploy/package-lock.json  # Remove backend package files
 
@@ -52,9 +60,6 @@ jobs:
 
         # Copy root-level config files (with dependencies) - THIS IS THE ONLY package.json
         cp package*.json deploy/
-        cp startup.js deploy/
-        cp web.config deploy/
-        cp .deployment deploy/
 
         echo "Deployment package contents:"
         ls -la deploy/
@@ -71,4 +76,28 @@ jobs:
       with:
         app-name: 'scholargy-dz3lcl3szkm74'
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-        package: ./deploy 
+        package: ./deploy
+        
+    # Step 5: Wait for deployment and check health
+    - name: Wait for deployment
+      run: |
+        echo "⏳ Waiting for deployment to complete..."
+        sleep 30
+        
+    - name: Check application health
+      run: |
+        echo "🏥 Checking application health..."
+        # Wait for the application to be ready
+        for i in {1..10}; do
+          echo "Attempt $i: Checking health endpoint..."
+          if curl -f -s "https://scholargy-dz3lcl3szkm74.azurewebsites.net/api/health" > /dev/null; then
+            echo "✅ Application is healthy!"
+            break
+          elif curl -f -s "https://scholargy-dz3lcl3szkm74.azurewebsites.net/api/startup" > /dev/null; then
+            echo "✅ Application startup probe successful!"
+            break
+          else
+            echo "⏳ Application not ready yet, waiting..."
+            sleep 10
+          fi
+        done 

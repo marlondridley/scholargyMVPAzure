@@ -9,21 +9,15 @@ console.log(`📦 Node.js version: ${process.version}`);
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 process.env.PORT = process.env.PORT || 8080;
 
-// Azure will handle npm install automatically
-console.log('📦 Dependencies will be installed by Azure Oryx');
-
-// Start the backend server
+// Correctly point to the server.js file inside the backend directory
 const serverPath = path.join(__dirname, 'backend', 'server.js');
 console.log(`📡 Starting backend server at: ${serverPath}`);
 
-// Check if node_modules exists
-const nodeModulesPath = path.join(__dirname, 'node_modules');
-if (fs.existsSync(nodeModulesPath)) {
-  console.log(`✅ node_modules found at: ${nodeModulesPath}`);
-  console.log(`📦 node_modules contains: ${fs.readdirSync(nodeModulesPath).length} packages`);
-} else {
-  console.log(`❌ node_modules NOT FOUND at: ${nodeModulesPath}`);
+// Check if the server file exists before trying to run it
+if (!fs.existsSync(serverPath)) {
+  console.error(`❌ Server file not found at: ${serverPath}`);
   console.log(`📁 Current directory contents: ${fs.readdirSync(__dirname).join(', ')}`);
+  process.exit(1);
 }
 
 const server = spawn('node', [serverPath], {
@@ -50,4 +44,4 @@ process.on('SIGTERM', () => {
 process.on('SIGINT', () => {
   console.log('🛑 Received SIGINT, shutting down gracefully...');
   server.kill('SIGINT');
-}); 
+});
