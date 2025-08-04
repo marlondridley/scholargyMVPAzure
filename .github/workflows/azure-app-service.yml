@@ -3,11 +3,11 @@
 
 name: Build and Deploy Scholargy to Azure App Service
 
-# Trigger: This workflow runs on every push to the 'master' branch.
+# Trigger: This workflow runs on every push to the 'main' branch.
 on:
   push:
     branches:
-      - master  # Changed from 'main' to 'master' to match your repo
+      - main  # Updated to match your current branch
   workflow_dispatch: # Allows you to run this workflow manually from the Actions tab
 
 jobs:
