@@ -1,0 +1,21 @@
+{
+  "name": "scholargy-mvp-azure",
+  "type": "web",
+  "runtime": "node",
+  "version": "22-lts",
+  "os": "linux",
+  "region": "East US",
+  "sku": "B1",
+  "configuration": {
+    "nodeVersion": "22.17.1",
+    "startupCommand": "npm start",
+    "environmentVariables": {
+      "NODE_ENV": "production",
+      "PORT": "8080"
+    }
+  },
+  "deployment": {
+    "source": "github",
+    "branch": "main"
+  }
+} 
