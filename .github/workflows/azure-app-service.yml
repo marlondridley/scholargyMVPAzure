@@ -28,8 +28,12 @@ jobs:
         cache: 'npm'
         cache-dependency-path: '**/package-lock.json'
 
+    # --- Root Dependencies (for Azure) ---
+    - name: Install root dependencies
+      run: npm install
+
     # --- Frontend Build Steps ---
-    - name: Install dependencies
+    - name: Install frontend dependencies
       run: npm install
       working-directory: frontend
 

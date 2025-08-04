@@ -8,6 +8,9 @@ console.log('🚀 Starting Scholargy MVP on Azure App Service...');
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 process.env.PORT = process.env.PORT || 8080;
 
+// Azure will handle npm install automatically
+console.log('📦 Dependencies will be installed by Azure Oryx');
+
 // Start the backend server
 const serverPath = path.join(__dirname, 'backend', 'server.js');
 console.log(`📡 Starting backend server at: ${serverPath}`);
@@ -16,6 +19,16 @@ console.log(`📡 Starting backend server at: ${serverPath}`);
 const isDeployment = fs.existsSync(path.join(__dirname, 'server.js'));
 const actualServerPath = isDeployment ? path.join(__dirname, 'server.js') : serverPath;
 console.log(`📡 Using server path: ${actualServerPath}`);
+
+// Check if node_modules exists
+const nodeModulesPath = path.join(__dirname, 'node_modules');
+if (fs.existsSync(nodeModulesPath)) {
+  console.log(`✅ node_modules found at: ${nodeModulesPath}`);
+  console.log(`📦 node_modules contains: ${fs.readdirSync(nodeModulesPath).length} packages`);
+} else {
+  console.log(`❌ node_modules NOT FOUND at: ${nodeModulesPath}`);
+  console.log(`📁 Current directory contents: ${fs.readdirSync(__dirname).join(', ')}`);
+}
 
 const server = spawn('node', [actualServerPath], {
   stdio: 'inherit',
