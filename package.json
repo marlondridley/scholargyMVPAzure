@@ -8,7 +8,8 @@
     "backend"
   ],
   "scripts": {
-    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start": "node startup.js",
+    "start:dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
     "start:backend": "cd backend && npm start",
     "start:frontend": "cd frontend && npm start",
     "build": "cd frontend && npm run build",
