@@ -44,6 +44,18 @@ jobs:
     - name: Build frontend
       run: CI=false npm run build
       working-directory: frontend
+      
+    - name: Verify frontend build
+      run: |
+        echo "📁 Frontend build contents:"
+        ls -la frontend/build/
+        echo "📁 Checking for index.html:"
+        if [ -f "frontend/build/index.html" ]; then
+          echo "✅ index.html found"
+        else
+          echo "❌ index.html not found"
+          exit 1
+        fi
 
     # Step 3: Package the application for deployment
     - name: Package application for Azure
@@ -69,6 +81,15 @@ jobs:
         grep -i express deploy/package.json
         echo "📁 Public directory (frontend build):"
         ls -la deploy/public/
+        echo "📁 Verifying server.js exists:"
+        if [ -f "deploy/server.js" ]; then
+          echo "✅ server.js found"
+        else
+          echo "❌ server.js not found"
+          exit 1
+        fi
+        echo "📁 Verifying package.json start script:"
+        grep -A 1 '"start"' deploy/package.json
 
     # Step 4: Deploy to Azure App Service
     - name: 'Deploy to Azure Web App'
