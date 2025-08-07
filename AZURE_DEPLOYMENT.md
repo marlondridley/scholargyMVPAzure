@@ -1,55 +1,51 @@
-# 🚀 Azure App Service Deployment Guide
+# 🚀 Azure App Service Deployment Guide for Scholargy
 
 ## Overview
-This guide covers deploying the Scholargy MVP to Azure App Service with Node.js 22 LTS on Ubuntu.
+This guide covers deploying the Scholargy MVP to Azure App Service with environment variables configured through Azure App Settings.
 
 ## 📋 Prerequisites
 
 ### Azure Resources Required:
 - **Azure App Service Plan**: B1 or higher (recommended)
 - **Azure App Service**: Web App with Node.js 22 LTS runtime
-- **Azure Database**: MongoDB Atlas or Azure Cosmos DB
-- **Azure Redis Cache**: For session management and caching
-- **Azure Search**: For RAG functionality (optional)
+- **Azure Cosmos DB**: For user profiles and application data
+- **Azure Redis Cache**: For session management and caching (optional)
+- **Azure OpenAI**: For AI-powered features
+- **Supabase**: For authentication
 
-### Environment Variables:
+### Environment Variables (App Settings):
+Configure these in Azure Portal → App Service → Configuration → Application settings:
+
 ```bash
-# Database
-MONGODB_URI=your_mongodb_connection_string
+# Supabase Configuration
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
-# Redis Cache
-REDIS_URL=your_redis_connection_string
+# Database Configuration
+COSMOS_DB_CONNECTION_STRING=your_cosmos_db_connection_string
+DB_NAME=scholargy-db
 
-# Azure OpenAI (for RAG)
-AZURE_OPENAI_ENDPOINT=your_openai_endpoint
+# Azure OpenAI Configuration
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_KEY=your_openai_api_key
 AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-ada-002
 
-# Azure Search (optional)
-AZURE_SEARCH_ENDPOINT=your_search_endpoint
-AZURE_SEARCH_API_KEY=your_search_api_key
-AZURE_SEARCH_INDEX_NAME=scholargyindex
+# Frontend Environment Variables
+REACT_APP_SUPABASE_URL=https://your-project.supabase.co
+REACT_APP_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Optional Redis Configuration
+AZURE_REDIS_CONNECTION_STRING=your_redis_connection_string
 
 # App Configuration
 NODE_ENV=production
 PORT=8080
 ```
 
-## 🔧 Deployment Steps
+## 🔧 Azure App Service Configuration
 
-### 1. GitHub Actions Deployment (Recommended)
-
-#### Setup GitHub Secrets:
-1. Go to your GitHub repository → Settings → Secrets and variables → Actions
-2. Add the following secrets:
-   - `AZURE_WEBAPP_PUBLISH_PROFILE`: Download from Azure Portal
-
-#### Azure App Service Configuration:
-1. Create App Service with Node.js 22 LTS
-2. Set startup command: `npm start`
-3. Configure environment variables in Azure Portal
-
-### 2. Manual Deployment
+### 1. Create Azure App Service
 
 #### Using Azure CLI:
 ```bash
@@ -67,15 +63,74 @@ az webapp create --name scholargy-mvp-azure --resource-group scholargy-rg --plan
 
 # Configure startup command
 az webapp config set --name scholargy-mvp-azure --resource-group scholargy-rg --startup-file "npm start"
-
-# Set environment variables
-az webapp config appsettings set --name scholargy-mvp-azure --resource-group scholargy-rg --settings NODE_ENV=production
 ```
 
 #### Using Azure Portal:
-1. Create App Service with Node.js 22 LTS runtime
-2. Configure startup command: `npm start`
-3. Set environment variables in Configuration → Application settings
+1. Go to Azure Portal → App Services → Create
+2. Select "Web App"
+3. Choose Node.js 22 LTS runtime
+4. Select B1 or higher SKU
+5. Configure startup command: `npm start`
+
+### 2. Configure Environment Variables (App Settings)
+
+#### Using Azure CLI to set App Settings:
+```bash
+# Set required environment variables
+az webapp config appsettings set --name scholargy-mvp-azure --resource-group scholargy-rg --settings \
+  SUPABASE_URL="https://your-project.supabase.co" \
+  SUPABASE_SERVICE_ROLE_KEY="your_service_role_key" \
+  COSMOS_DB_CONNECTION_STRING="your_cosmos_db_connection_string" \
+  DB_NAME="scholargy-db" \
+  AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com/" \
+  AZURE_OPENAI_API_KEY="your_openai_api_key" \
+  AZURE_OPENAI_DEPLOYMENT_NAME="gpt-4o" \
+  AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME="text-embedding-ada-002" \
+  REACT_APP_SUPABASE_URL="https://your-project.supabase.co" \
+  REACT_APP_SUPABASE_ANON_KEY="your_supabase_anon_key"
+
+# Set optional Redis configuration
+az webapp config appsettings set --name scholargy-mvp-azure --resource-group scholargy-rg --settings \
+  AZURE_REDIS_CONNECTION_STRING="your_redis_connection_string"
+```
+
+## 🚀 Deployment Methods
+
+### Method 1: GitHub Actions (Recommended)
+
+#### 1. Create GitHub Secrets:
+Go to your GitHub repository → Settings → Secrets and variables → Actions
+Add these secrets:
+- `AZURE_WEBAPP_PUBLISH_PROFILE`: Download from Azure Portal
+- `AZURE_WEBAPP_NAME`: Your app service name
+- `AZURE_WEBAPP_URL`: Your app service URL
+- `REACT_APP_SUPABASE_URL`: Supabase URL for frontend build
+- `REACT_APP_SUPABASE_ANON_KEY`: Supabase anon key for frontend build
+
+### Method 2: Manual Deployment
+
+#### 1. Build the Application:
+```bash
+# Install dependencies
+npm ci
+cd frontend && npm ci && cd ..
+
+# Build frontend
+cd frontend
+npm run build
+cd ..
+```
+
+#### 2. Deploy to Azure:
+```bash
+# Create deployment package
+zip -r deploy.zip . -x "node_modules/*" "frontend/node_modules/*" ".git/*"
+
+# Deploy to Azure App Service
+az webapp deployment source config-zip --resource-group scholargy-rg --name scholargy-mvp-azure --src deploy.zip
+```
+
+
 
 ## 📁 Application Structure
 
@@ -139,25 +194,35 @@ az monitor app-insights component create --app scholargy-insights --location eas
 az webapp log tail --name scholargy-mvp-azure --resource-group scholargy-rg
 ```
 
-## 🚨 Troubleshooting
+## 🚨 Common Issues and Solutions
 
-### Common Issues:
+### 1. Environment Variable Issues:
+**Problem**: Application fails to start due to missing environment variables
+**Solution**: 
+- Verify all required app settings are configured in Azure Portal
+- Check that variable names match exactly (case-sensitive)
+- Restart the app service after adding new settings
 
-1. **Port Configuration**:
-   - Ensure `PORT` environment variable is set
-   - Azure App Service uses port 8080 by default
+### 2. Build Failures:
+**Problem**: Frontend build fails during deployment
+**Solution**:
+- Ensure all frontend dependencies are installed
+- Check that build script exists in `frontend/package.json`
+- Verify Node.js version compatibility
 
-2. **Node.js Version**:
-   - Verify Node.js 22 LTS is selected in Azure Portal
-   - Check `engines` field in package.json
+### 3. Database Connection Issues:
+**Problem**: Application can't connect to Cosmos DB
+**Solution**:
+- Verify `COSMOS_DB_CONNECTION_STRING` is correct
+- Check that `DB_NAME` is set
+- Ensure Cosmos DB is accessible from App Service
 
-3. **Environment Variables**:
-   - Verify all required environment variables are set in Azure Portal
-   - Check Application Settings in Azure Portal
-
-4. **Build Issues**:
-   - Ensure frontend builds successfully
-   - Check `frontend/build` directory exists
+### 4. Authentication Issues:
+**Problem**: Supabase authentication not working
+**Solution**:
+- Verify Supabase URL and keys are correct
+- Check that both frontend and backend Supabase variables are set
+- Ensure Supabase project is properly configured
 
 ### Debug Commands:
 ```bash
@@ -218,13 +283,13 @@ az appservice plan update --name scholargy-plan --resource-group scholargy-rg --
 
 ## 🎯 Success Metrics
 
-### Deployment Success Indicators:
-- ✅ GitHub Actions workflow completes successfully
-- ✅ Application accessible at Azure URL
-- ✅ API endpoints responding correctly
-- ✅ Frontend loads without errors
-- ✅ Database connections working
-- ✅ RAG functionality operational (if configured)
+### Deployment Success:
+- ✅ Application starts without errors
+- ✅ All API endpoints responding
+- ✅ Frontend loads correctly
+- ✅ Authentication working
+- ✅ Database operations successful
+- ✅ AI features functional
 
 ### Performance Metrics:
 - **Response Time**: < 2 seconds for API calls
@@ -242,6 +307,7 @@ For deployment issues:
 
 ---
 
-**Last Updated**: August 2024
+**Last Updated**: December 2024
 **Node.js Version**: 22.17.1 LTS
-**Runtime**: Azure App Service (Linux) 
+**Runtime**: Azure App Service (Linux)
+**Environment**: Production with Azure App Settings 
