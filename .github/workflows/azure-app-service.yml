@@ -26,19 +26,11 @@ jobs:
       with:
         node-version: '22.x'  # Use Node.js 22 LTS as requested
         cache: 'npm'
-        cache-dependency-path: '**/package-lock.json'
+        cache-dependency-path: 'package-lock.json'  # Only root package-lock.json for workspaces
 
-    # --- Install Dependencies ---
-    - name: Install root dependencies
+    # --- Install Dependencies (Workspace Mode) ---
+    - name: Install all workspace dependencies
       run: npm install
-      
-    - name: Install frontend dependencies
-      run: npm install
-      working-directory: frontend
-      
-    - name: Install backend dependencies
-      run: npm install
-      working-directory: backend
 
     # --- Frontend Build Steps ---
     - name: Build frontend
@@ -114,11 +106,11 @@ jobs:
           if curl -f -s "https://scholargy-dz3lcl3szkm74.azurewebsites.net/api/health" > /dev/null; then
             echo "✅ Application is healthy!"
             break
-          elif curl -f -s "https://scholargy-dz3lcl3szkm74.azurewebsites.net/api/startup" > /dev/null; then
+          elif curl -f -s "https://scholargy-dz3zkl3szkm74.azurewebsites.net/api/startup" > /dev/null; then
             echo "✅ Application startup probe successful!"
             break
           else
             echo "⏳ Application not ready yet, waiting..."
             sleep 10
           fi
-        done 
+        done
