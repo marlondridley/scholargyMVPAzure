@@ -10,20 +10,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout code
+      # Checkout repository
       - uses: actions/checkout@v3
 
-      # 2️⃣ Set up Node.js
+      # Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '22'
 
-      # 3️⃣ Install root dependencies (hoisted workspace setup)
+      # Install root dependencies
       - name: Install root dependencies
         run: npm install
 
-      # 4️⃣ Build frontend
+      # Build frontend
       - name: Build frontend
         env:
           CI: false
@@ -33,39 +33,37 @@ jobs:
           npm run build
           cd ..
 
-      # 5️⃣ Prepare deployment folder
-      - name: Prepare deployment folder
+      # Install backend dependencies (production)
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm install --production
+          cd ..
+
+      # Prepare wwwroot for Azure
+      - name: Prepare deployment package
         run: |
           rm -rf deploy
           mkdir -p deploy
 
-          # Copy root node_modules for Azure startup
+          # Copy backend node_modules (monorepo → root)
           cp -r node_modules deploy/node_modules
 
-          # Copy startup.js to root of deploy
+          # Copy startup.js
           cp startup.js deploy/startup.js
 
           # Copy package.json & lock files
           cp package*.json deploy/
 
-          # Copy server.js if it exists
-          cp server.js deploy/ || true
-
-          # Copy backend code
+          # Copy backend
           mkdir -p deploy/backend
           cp -r backend/* deploy/backend/
 
-          # Copy built frontend output
+          # Copy frontend build output
           mkdir -p deploy/frontend/build
           cp -r frontend/build deploy/frontend/build
 
-          # Optional shared directories
-          cp -r public deploy/public || true
-          cp -r services deploy/services || true
-          cp -r utils deploy/utils || true
-          cp -r routes deploy/routes || true
-
-      # 6️⃣ Deploy to Azure Web App
+      # Deploy to Azure
       - name: Deploy to Azure WebApp
         uses: azure/webapps-deploy@v2
         with:
