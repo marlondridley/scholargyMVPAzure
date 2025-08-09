@@ -13,84 +13,30 @@ jobs:
       # 1️⃣ Checkout code
       - uses: actions/checkout@v3
 
-      # 2️⃣ Set up Node.js
+      # 2️⃣ Set up Node.js for any pre-deploy checks
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '22'
 
-      # 3️⃣ Install root dependencies (monorepo)
-      - name: Install root dependencies
-        run: npm install
-
-      # 4️⃣ Build frontend
-      - name: Build frontend
-        env:
-          CI: false
-        run: |
-          cd frontend
-          npm install
-          npm run build
-          cd ..
-
-      # 5️⃣ Install backend dependencies (production only)
+      # 3️⃣ Install backend dependencies (dev, since Oryx will prune to prod)
       - name: Install backend dependencies
         run: |
           cd backend
-          npm install --production
+          npm install
           cd ..
 
-      # 6️⃣ Prepare deployment folder
-      - name: Prepare deployment folder
-        run: |
-          rm -rf deploy
-          mkdir -p deploy
+      # 4️⃣ (Optional) Run tests or lint
+      # - name: Run tests
+      #   run: |
+      #     cd backend
+      #     npm test
+      #     cd ..
 
-          # Copy node_modules from root (monorepo hoisted)
-          cp -r node_modules deploy/node_modules
-
-          # Copy startup.js
-          cp startup.js deploy/startup.js
-
-          # Copy root package.json & lock
-          cp package*.json deploy/
-
-          # Copy backend code
-          mkdir -p deploy/backend
-          cp -r backend/* deploy/backend/
-
-          # Copy frontend build
-          mkdir -p deploy/frontend/build
-          cp -r frontend/build deploy/frontend/build
-
-      # 7️⃣ Verification step before zipping
-      - name: Verify deployment contents
-        run: |
-          echo "Verifying deploy folder contents..."
-          ls -R deploy | head -n 50
-          if [ ! -d "deploy/node_modules" ]; then
-            echo "❌ node_modules missing!"
-            exit 1
-          fi
-          if [ ! -f "deploy/startup.js" ]; then
-            echo "❌ startup.js missing!"
-            exit 1
-          fi
-          echo "✅ Verification passed."
-
-      # 8️⃣ Zip the deployment package
-      - name: Zip deployment package
-        run: |
-          cd deploy
-          zip -r ../deploy.zip .
-          cd ..
-          echo "✅ deploy.zip created."
-          ls -lh deploy.zip
-
-      # 9️⃣ Deploy to Azure Web App (zip method to bypass node_modules filter)
+      # 5️⃣ Deploy to Azure (let Oryx build frontend via postinstall)
       - name: Deploy to Azure WebApp
         uses: azure/webapps-deploy@v2
         with:
           app-name: scholargy-dz3lcl3szkm74
           publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-          package: deploy.zip
+          package: backend

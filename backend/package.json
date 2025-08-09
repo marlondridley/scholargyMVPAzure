@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
+    "postinstall": "cd ../frontend && npm install && npm run build && cd ../backend",
     "dev": "nodemon server.js",
     "test": "echo \"No tests specified\" && exit 0"
   },
@@ -31,7 +32,7 @@
     "nodemon": "^3.0.1"
   },
   "engines": {
-    "node": ">=18.0.0",
+    "node": ">=22.0.0",
     "npm": ">=9.0.0"
   }
 }
