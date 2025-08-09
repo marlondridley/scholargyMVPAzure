@@ -13,7 +13,7 @@ if (runningInAzure) {
   console.log(`🔹 Azure App Name: ${process.env.WEBSITE_SITE_NAME}`);
 }
 
-// Force NODE_ENV
+// Force NODE_ENV - but not sure what this does?
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 
 // Enforce safe port (never 8081)
