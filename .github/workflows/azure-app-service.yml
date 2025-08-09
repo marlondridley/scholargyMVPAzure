@@ -51,61 +51,51 @@ jobs:
           npm install
           cd ..
 
-      # Package application for Azure deployment
-      - name: Package application for Azure
+      # Prepare deployment package with correct structure
+      - name: Prepare deployment package
         run: |
-          rm -rf deploy
-          mkdir -p deploy/public
+          # Create deployment directory with expected structure
+          mkdir -p deploy
           
-          # Copy backend source files
-          cp -r backend/* deploy/
-          rm -f deploy/package.json deploy/package-lock.json  # Remove backend package files
-          
-          # Copy frontend build into public folder
-          cp -r frontend/build/* deploy/public/
-          
-          # Copy root-level config files (with all dependencies)
-          cp package*.json deploy/
+          # Copy root files (startup.js and package.json)
           cp startup.js deploy/
+          cp package*.json deploy/
           
-          # Copy additional directories if they exist
-          cp -r public deploy/public-extra || true
-          cp -r services deploy/services || true
-          cp -r utils deploy/utils || true
-          cp -r routes deploy/routes || true
-
-          echo "Deployment package contents:"
+          # Copy backend directory
+          cp -r backend deploy/backend
+          
+          # Embed frontend build in backend/public for serving
+          mkdir -p deploy/backend/public
+          cp -r frontend/build/* deploy/backend/public/
+          
+          echo "📁 Deployment package structure:"
           ls -la deploy/
-          echo "📁 Root package.json (with all dependencies):"
-          cat deploy/package.json | grep -A 10 '"dependencies"'
-          echo "📁 Verifying express is in dependencies:"
-          grep -i express deploy/package.json
+          echo "📁 Backend directory:"
+          ls -la deploy/backend/
           echo "📁 Public directory (frontend build):"
-          ls -la deploy/public/
-          echo "📁 Verifying startup.js exists:"
+          ls -la deploy/backend/public/
+          echo "📁 Verifying startup.js exists at root:"
           if [ -f "deploy/startup.js" ]; then
-            echo "✅ startup.js found"
+            echo "✅ startup.js found at root"
           else
-            echo "❌ startup.js not found"
+            echo "❌ startup.js not found at root"
             exit 1
           fi
-          echo "📁 Verifying server.js exists:"
-          if [ -f "deploy/server.js" ]; then
-            echo "✅ server.js found"
+          echo "📁 Verifying backend/server.js exists:"
+          if [ -f "deploy/backend/server.js" ]; then
+            echo "✅ backend/server.js found"
           else
-            echo "❌ server.js not found"
+            echo "❌ backend/server.js not found"
             exit 1
           fi
-          echo "📁 Verifying package.json start script:"
-          grep -A 1 '"start"' deploy/package.json
 
-      # Deploy to Azure Web App
-      - name: 'Deploy to Azure Web App'
-        uses: azure/webapps-deploy@v3
+      # Deploy with correct structure
+      - name: Deploy to Azure WebApp
+        uses: azure/webapps-deploy@v2
         with:
-          app-name: 'scholargy-dz3lcl3szkm74'
+          app-name: scholargy-dz3lcl3szkm74
           publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-          package: ./deploy
+          package: deploy
         
       # Wait for deployment and check health
       - name: Wait for deployment
