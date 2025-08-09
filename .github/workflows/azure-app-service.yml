@@ -48,39 +48,33 @@ jobs:
           echo "❌ index.html not found"
           exit 1
         fi
-
     # Step 3: Package the application for deployment
     - name: Package application for Azure
       run: |
         rm -rf deploy
         mkdir -p deploy/public
-
-        # Copy backend source files (including server.js as main entry point)
-        cp -r backend/* deploy/
-        rm -f deploy/package.json deploy/package-lock.json  # Remove backend package files
-
+        
+        # Copy backend source files PRESERVING directory structure
+        cp -r backend/ deploy/backend/
+        
         # Copy frontend build into public folder
         cp -r frontend/build/* deploy/public/
-
-        # Copy root-level config files (with dependencies) - THIS IS THE ONLY package.json
+        
+        # Copy root-level config files (with dependencies)
         cp package*.json deploy/
-
+        
         echo "Deployment package contents:"
         ls -la deploy/
-        echo "📁 Root package.json (with all dependencies):"
-        cat deploy/package.json | grep -A 10 '"dependencies"'
-        echo "📁 Verifying express is in dependencies:"
-        grep -i express deploy/package.json
-        echo "📁 Public directory (frontend build):"
-        ls -la deploy/public/
-        echo "📁 Verifying server.js exists:"
-        if [ -f "deploy/server.js" ]; then
-          echo "✅ server.js found"
+        echo "📁 Backend directory:"
+        ls -la deploy/backend/
+        echo "📁 Verifying server.js exists in backend:"
+        if [ -f "deploy/backend/server.js" ]; then
+          echo "✅ backend/server.js found"
         else
-          echo "❌ server.js not found"
+          echo "❌ backend/server.js not found"
           exit 1
         fi
-        echo "📁 Verifying package.json start script:"
+        echo "📁 Package.json start script:"
         grep -A 1 '"start"' deploy/package.json
 
     # Step 4: Deploy to Azure App Service
