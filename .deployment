@@ -1,2 +1,6 @@
 [config]
-command = node --version && npm start 
+project = backend
+SCM_DO_BUILD_DURING_DEPLOYMENT = true
+
+[post-build]
+command = bash deploy.sh
