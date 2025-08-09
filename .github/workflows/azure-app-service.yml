@@ -1,110 +1,59 @@
-# Filename: .github/workflows/azure-app-service.yml
-# Description: A GitHub Actions workflow to build and deploy the full-stack Scholargy application to Azure App Service.
+name: Build and deploy Node.js app to Azure Web App
 
-name: Build and Deploy Scholargy to Azure App Service
-
-# Trigger: This workflow runs on every push to the 'main' branch.
 on:
   push:
     branches:
-      - main  # Updated to match your current branch
-      - master  # Also trigger on master for compatibility
-  workflow_dispatch: # Allows you to run this workflow manually from the Actions tab
+      - main
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-    # Step 1: Check out the repository code
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-    # Step 2: Set up Node.js environment
-    - name: Set up Node.js version
-      uses: actions/setup-node@v4
-      with:
-        node-version: '22.x'  # Use Node.js 22 LTS as requested
-        cache: 'npm'
-        cache-dependency-path: 'package-lock.json'  # Only root package-lock.json for workspaces
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
 
-    # --- Install Dependencies (Workspace Mode) ---
-    - name: Install all workspace dependencies
-      run: npm install
+      # Install root dependencies (if any)
+      - name: Install root dependencies
+        run: npm install
 
-    # --- Frontend Build Steps ---
-    - name: Build frontend
-      run: CI=false npm run build
-      working-directory: frontend
-      
-    - name: Verify frontend build
-      run: |
-        echo "📁 Frontend build contents:"
-        ls -la frontend/build/
-        echo "📁 Checking for index.html:"
-        if [ -f "frontend/build/index.html" ]; then
-          echo "✅ index.html found"
-        else
-          echo "❌ index.html not found"
-          exit 1
-        fi
-    # Step 3: Package the application for deployment
-    - name: Package application for Azure
-      run: |
-        rm -rf deploy
-        mkdir -p deploy/public
-        
-        # Copy backend source files PRESERVING directory structure
-        cp -r backend/ deploy/backend/
-        
-        # Copy frontend build into public folder
-        cp -r frontend/build/* deploy/public/
-        
-        # Copy root-level config files (with dependencies)
-        cp package*.json deploy/
-        
-        echo "Deployment package contents:"
-        ls -la deploy/
-        echo "📁 Backend directory:"
-        ls -la deploy/backend/
-        echo "📁 Verifying server.js exists in backend:"
-        if [ -f "deploy/backend/server.js" ]; then
-          echo "✅ backend/server.js found"
-        else
-          echo "❌ backend/server.js not found"
-          exit 1
-        fi
-        echo "📁 Package.json start script:"
-        grep -A 1 '"start"' deploy/package.json
+      # Build frontend
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm install
+          npm run build
+          cd ..
 
-    # Step 4: Deploy to Azure App Service
-    - name: 'Deploy to Azure Web App'
-      uses: azure/webapps-deploy@v3
-      with:
-        app-name: 'scholargy-dz3lcl3szkm74'
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-        package: ./deploy
-        
-    # Step 5: Wait for deployment and check health
-    - name: Wait for deployment
-      run: |
-        echo "⏳ Waiting for deployment to complete..."
-        sleep 30
-        
-    - name: Check application health
-      run: |
-        echo "🏥 Checking application health..."
-        # Wait for the application to be ready
-        for i in {1..10}; do
-          echo "Attempt $i: Checking health endpoint..."
-          if curl -f -s "https://scholargy-dz3lcl3szkm74.azurewebsites.net/api/health" > /dev/null; then
-            echo "✅ Application is healthy!"
-            break
-          elif curl -f -s "https://scholargy-dz3zkl3szkm74.azurewebsites.net/api/startup" > /dev/null; then
-            echo "✅ Application startup probe successful!"
-            break
-          else
-            echo "⏳ Application not ready yet, waiting..."
-            sleep 10
-          fi
-        done
+      # Install backend dependencies
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm install
+          cd ..
+
+      # Prepare deployment package
+      - name: Prepare deployment folder
+        run: |
+          mkdir -p deploy
+          cp package*.json deploy/
+          cp startup.js deploy/            # ✅ Ensure startup.js is at root
+          cp server.js deploy/ || true     # Optional if you want root server.js
+          cp -r backend deploy/backend
+          cp -r frontend deploy/frontend
+          cp -r public deploy/public || true
+          cp -r services deploy/services || true
+          cp -r utils deploy/utils || true
+          cp -r routes deploy/routes || true
+
+      # Deploy to Azure Web App
+      - name: Deploy to Azure WebApp
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: scholargy-dz3lcl3szkm74
+          publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+          package: deploy
