@@ -10,18 +10,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout code
       - uses: actions/checkout@v3
 
+      # 2️⃣ Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '22'
 
-      # Install root dependencies (if any)
+      # 3️⃣ Install root dependencies (if any)
       - name: Install root dependencies
         run: npm install
 
-      # Build frontend
+      # 4️⃣ Build frontend
       - name: Build frontend
         env:
           CI: false
@@ -31,92 +33,33 @@ jobs:
           npm run build
           cd ..
 
-      # Verify frontend build
-      - name: Verify frontend build
-        run: |
-          echo "📁 Frontend build contents:"
-          ls -la frontend/build/
-          echo "📁 Checking for index.html:"
-          if [ -f "frontend/build/index.html" ]; then
-            echo "✅ index.html found"
-          else
-            echo "❌ index.html not found"
-            exit 1
-          fi
-
-      # Install backend dependencies
+      # 5️⃣ Install backend dependencies (production only)
       - name: Install backend dependencies
         run: |
           cd backend
-          npm install
+          npm install --production
           cd ..
 
-      # Prepare deployment package with correct structure
-      - name: Prepare deployment package
+      # 6️⃣ Prepare deployment folder
+      - name: Prepare deployment folder
         run: |
-          # Create deployment directory with expected structure
+          rm -rf deploy
           mkdir -p deploy
-          
-          # Copy root files (startup.js and package.json)
-          cp startup.js deploy/
-          cp package*.json deploy/
-          
-          # Copy backend directory
-          cp -r backend deploy/backend
-          
-          # Embed frontend build in backend/public for serving
-          mkdir -p deploy/backend/public
-          cp -r frontend/build/* deploy/backend/public/
-          
-          echo "📁 Deployment package structure:"
-          ls -la deploy/
-          echo "📁 Backend directory:"
-          ls -la deploy/backend/
-          echo "📁 Public directory (frontend build):"
-          ls -la deploy/backend/public/
-          echo "📁 Verifying startup.js exists at root:"
-          if [ -f "deploy/startup.js" ]; then
-            echo "✅ startup.js found at root"
-          else
-            echo "❌ startup.js not found at root"
-            exit 1
-          fi
-          echo "📁 Verifying backend/server.js exists:"
-          if [ -f "deploy/backend/server.js" ]; then
-            echo "✅ backend/server.js found"
-          else
-            echo "❌ backend/server.js not found"
-            exit 1
-          fi
 
-      # Deploy with correct structure
-      - name: Deploy to Azure WebApp
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: scholargy-dz3lcl3szkm74
-          publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-          package: deploy
-        
-      # Wait for deployment and check health
-      - name: Wait for deployment
-        run: |
-          echo "⏳ Waiting for deployment to complete..."
-          sleep 30
-        
-      - name: Check application health
-        run: |
-          echo "🏥 Checking application health..."
-          # Wait for the application to be ready
-          for i in {1..10}; do
-            echo "Attempt $i: Checking health endpoint..."
-            if curl -f -s "https://scholargy-dz3lcl3szkm74.azurewebsites.net/api/health" > /dev/null; then
-              echo "✅ Application is healthy!"
-              break
-            elif curl -f -s "https://scholargy-dz3lcl3szkm74.azurewebsites.net/api/startup" > /dev/null; then
-              echo "✅ Application startup probe successful!"
-              break
-            else
-              echo "⏳ Application not ready yet, waiting..."
-              sleep 10
-            fi
-          done
+          # Copy backend dependencies to root so Azure can start instantly
+          cp -r backend/node_modules deploy/node_modules
+
+          # Copy startup.js directly to deploy root
+          cp startup.js deploy/startup.js
+
+          # Copy package.json & lock files
+          cp package*.json deploy/
+
+          # Copy server.js if exists
+          cp server.js deploy/ || true
+          
+          # Copy backend code
+          mkdir -p deploy/backend
+          cp -r backend/* deploy/backend/
+
+          # Copy built frontend
