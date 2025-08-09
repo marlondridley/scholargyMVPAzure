@@ -13,7 +13,7 @@ const AuthCallback = ({ setView }) => {
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const error = urlParams.get('error');
-        const code = urlParams.get('code');
+        // const code = urlParams.get('code');
 
         if (error) {
           setError(`Authentication error: ${error}`);

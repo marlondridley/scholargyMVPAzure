@@ -48,7 +48,16 @@ const Main = () => {
     else if (path === '/profile') setView('profile');
     else if (path === '/report') setView('report');
   }, []);
+	
+  // ✅ NEW: Use setProfile so it's not "unused"
+  useEffect(() => {
+    if (user && user.profile) {
+    setProfile(user.profile);
+    console.log("🔹 Profile loaded into state:", user.profile);
+    }
+  }, [user, setProfile]);
 
+	
   const handleSelectCollege = (unitId) => {
     setSelectedCollegeId(unitId);
     setView('profile');
