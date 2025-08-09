@@ -14,6 +14,21 @@ const CareerForecasterPage = () => {
     financialGoals: ''
   });
 
+  // ✅ Prefill form with user data when available
+useEffect(() => {
+  if (user) {
+    console.log("👤 Prefilling Career Forecaster form with user data:", user);
+
+    setFormData(prev => ({
+      ...prev,
+      careerGoal: user.careerGoal || prev.careerGoal,
+      majorInterest: user.majorInterest || prev.majorInterest,
+      targetColleges: user.targetColleges?.join(', ') || prev.targetColleges,
+      financialGoals: user.financialGoals || prev.financialGoals
+    }));
+  }
+}, [user]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -21,7 +36,7 @@ const CareerForecasterPage = () => {
       [name]: value
     }));
   };
-
+  
   const generateForecast = async () => {
     if (!formData.careerGoal || !formData.majorInterest) {
       setError('Please fill in career goal and major interest');
