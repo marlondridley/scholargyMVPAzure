@@ -2,5 +2,5 @@
 project = backend
 SCM_DO_BUILD_DURING_DEPLOYMENT = true
 
-[post-build]
+[post-build]  
 command = bash deploy.sh
