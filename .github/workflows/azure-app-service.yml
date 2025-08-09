@@ -10,33 +10,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout code
+      # 1️⃣ Checkout repository
       - uses: actions/checkout@v3
 
-      # 2️⃣ Set up Node.js for any pre-deploy checks
+      # 2️⃣ Set Node version (for Actions build steps, not Oryx)
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '22'
 
-      # 3️⃣ Install backend dependencies (dev, since Oryx will prune to prod)
+      # 3️⃣ Install backend deps (Oryx will still install in Azure, this just catches build issues early)
       - name: Install backend dependencies
         run: |
           cd backend
           npm install
           cd ..
 
-      # 4️⃣ (Optional) Run tests or lint
-      # - name: Run tests
-      #   run: |
-      #     cd backend
-      #     npm test
-      #     cd ..
-
-      # 5️⃣ Deploy to Azure (let Oryx build frontend via postinstall)
-      - name: Deploy to Azure WebApp
+      # 4️⃣ Deploy directly to Azure
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: scholargy-dz3lcl3szkm74
           publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-          package: backend
+          package: .
