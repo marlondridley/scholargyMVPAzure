@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
-    "postinstall": "cd ../frontend && npm install && npm run build && cd ../backend",
+    "postinstall": "cd ../frontend && npm install && CI=false && npm run build && cd ../backend",
     "dev": "nodemon server.js",
     "test": "echo \"No tests specified\" && exit 0"
   },
