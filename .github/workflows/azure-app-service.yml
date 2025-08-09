@@ -41,25 +41,34 @@ jobs:
           cd ..
 
       # 6️⃣ Prepare deployment folder
+      # 6️⃣ Prepare deployment folder
       - name: Prepare deployment folder
-        run: |
-          rm -rf deploy
-          mkdir -p deploy
+      run: |
+        rm -rf deploy
+        mkdir -p deploy
 
-          # Copy backend dependencies to root so Azure can start instantly
-          cp -r backend/node_modules deploy/node_modules
+        # Copy root node_modules (workspace hoisted)
+        cp -r node_modules deploy/node_modules
 
-          # Copy startup.js directly to deploy root
-          cp startup.js deploy/startup.js
+        # Copy startup.js directly to deploy root
+        cp startup.js deploy/startup.js
 
-          # Copy package.json & lock files
-          cp package*.json deploy/
+        # Copy package.json & lock files
+        cp package*.json deploy/
 
-          # Copy server.js if exists
-          cp server.js deploy/ || true
-          
-          # Copy backend code
-          mkdir -p deploy/backend
-          cp -r backend/* deploy/backend/
+        # Copy server.js if exists
+        cp server.js deploy/ || true
 
-          # Copy built frontend
+        # Copy backend code
+        mkdir -p deploy/backend
+        cp -r backend/* deploy/backend/
+
+        # Copy built frontend
+        mkdir -p deploy/frontend/build
+        cp -r frontend/build deploy/frontend/build
+
+        # Optional shared directories
+        cp -r public deploy/public || true
+        cp -r services deploy/services || true
+        cp -r utils deploy/utils || true
+        cp -r routes deploy/routes || true
