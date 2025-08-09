@@ -1,4 +1,4 @@
-// ✅ Refactored server startup to ensure DB connection is ready before loading services/routes
+// ✅ Server startup with Azure-safe port handling and robust frontend serving
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
@@ -8,23 +8,24 @@ require('dotenv').config();
 
 const app = express();
 
-// 🚀 Enforce never binding to MSI's port 8081
+// 🚀 Azure-safe port override (startup.js should also set this)
 const PORT = process.env.PORT && process.env.PORT !== '8081'
   ? process.env.PORT
   : 8080;
 console.log(`📢 Server starting on PORT=${PORT} (Azure override allowed)`);
 
+// --- Middleware & Security ---
+
 // Rate limiting
-const limiter = rateLimit({
+app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-});
-app.use(limiter);
+}));
 
-// Security middleware
+// Basic security
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -38,7 +39,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Bot & path blocking
+// Bot & suspicious path blocking
 app.use((req, res, next) => {
   const ua = req.headers['user-agent'] || '';
   const suspiciousUA = [/bot/i, /crawler/i, /spider/i, /scanner/i, /robots/i];
@@ -55,22 +56,23 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve frontend
-const frontendBuildPath = process.env.NODE_ENV === 'production'
-  ? path.join(__dirname, 'public')
-  : path.join(__dirname, '..', 'frontend', 'build');
+// --- Static frontend handling ---
+const frontendBuildPath = path.join(__dirname, '..', 'frontend', 'build');
 console.log(`📁 Serving static files from: ${frontendBuildPath}`);
 app.use(express.static(frontendBuildPath));
 
+// --- Startup sequence ---
 const startServer = async () => {
   try {
     console.log('🔄 Initializing services...');
+
+    // Validate environment
     const { validateEnvironment } = require('./utils/envValidation');
     validateEnvironment();
 
+    // Connect to DB and cache
     const { connectDB, getDB } = require('./db');
     const { connectCache, checkRedisHealth } = require('./cache');
-
     const db = await connectDB();
     await connectCache();
 
@@ -81,12 +83,9 @@ const startServer = async () => {
     }
 
     // Initialize services
-    const scholarshipService = require('./services/scholarshipService');
-    const careerService = require('./services/careerService');
-    const userService = require('./services/userService');
-    await scholarshipService.initialize();
-    await careerService.initialize();
-    await userService.initialize();
+    await require('./services/scholarshipService').initialize();
+    await require('./services/careerService').initialize();
+    await require('./services/userService').initialize();
     console.log('✅ All services initialized');
 
     // Routes
@@ -124,12 +123,13 @@ const startServer = async () => {
       }
     });
 
-    // React fallback
+    // React SPA fallback
     app.get('*', (req, res) => {
       const indexPath = path.join(frontendBuildPath, 'index.html');
       if (fs.existsSync(indexPath)) {
         res.sendFile(indexPath);
       } else {
+        console.error(`❌ Frontend index.html missing at ${indexPath}`);
         res.status(404).json({ error: 'Frontend not found' });
       }
     });
@@ -139,6 +139,7 @@ const startServer = async () => {
       console.log(`🚀 Server is live on port ${PORT}`);
     });
 
+    // Graceful shutdown
     const shutdown = (signal) => {
       console.log(`🛑 ${signal} received - shutting down gracefully...`);
       server.close(() => {
@@ -148,12 +149,14 @@ const startServer = async () => {
     };
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGINT', () => shutdown('SIGINT'));
+
   } catch (error) {
     console.error('❌ Fatal: Failed to start server:', error);
     process.exit(1);
   }
 };
 
+// Global error handlers
 process.on('uncaughtException', (err) => {
   console.error('❌ Uncaught Exception:', err);
   process.exit(1);
