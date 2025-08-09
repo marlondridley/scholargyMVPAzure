@@ -32,4 +32,4 @@ jobs:
         with:
           app-name: scholargy-dz3lcl3szkm74
           publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-          package: .
+          package: ./backend
