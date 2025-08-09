@@ -10,20 +10,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout repository
+      # 1️⃣ Checkout code
       - uses: actions/checkout@v3
 
-      # Set up Node.js
+      # 2️⃣ Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '22'
 
-      # Install root dependencies
+      # 3️⃣ Install root dependencies (monorepo)
       - name: Install root dependencies
         run: npm install
 
-      # Build frontend
+      # 4️⃣ Build frontend
       - name: Build frontend
         env:
           CI: false
@@ -33,40 +33,64 @@ jobs:
           npm run build
           cd ..
 
-      # Install backend dependencies (production)
+      # 5️⃣ Install backend dependencies (production only)
       - name: Install backend dependencies
         run: |
           cd backend
           npm install --production
           cd ..
 
-      # Prepare wwwroot for Azure
-      - name: Prepare deployment package
+      # 6️⃣ Prepare deployment folder
+      - name: Prepare deployment folder
         run: |
           rm -rf deploy
           mkdir -p deploy
 
-          # Copy backend node_modules (monorepo → root)
+          # Copy node_modules from root (monorepo hoisted)
           cp -r node_modules deploy/node_modules
 
           # Copy startup.js
           cp startup.js deploy/startup.js
 
-          # Copy package.json & lock files
+          # Copy root package.json & lock
           cp package*.json deploy/
 
-          # Copy backend
+          # Copy backend code
           mkdir -p deploy/backend
           cp -r backend/* deploy/backend/
 
-          # Copy frontend build output
+          # Copy frontend build
           mkdir -p deploy/frontend/build
           cp -r frontend/build deploy/frontend/build
 
-      # Deploy to Azure
+      # 7️⃣ Verification step before zipping
+      - name: Verify deployment contents
+        run: |
+          echo "Verifying deploy folder contents..."
+          ls -R deploy | head -n 50
+          if [ ! -d "deploy/node_modules" ]; then
+            echo "❌ node_modules missing!"
+            exit 1
+          fi
+          if [ ! -f "deploy/startup.js" ]; then
+            echo "❌ startup.js missing!"
+            exit 1
+          fi
+          echo "✅ Verification passed."
+
+      # 8️⃣ Zip the deployment package
+      - name: Zip deployment package
+        run: |
+          cd deploy
+          zip -r ../deploy.zip .
+          cd ..
+          echo "✅ deploy.zip created."
+          ls -lh deploy.zip
+
+      # 9️⃣ Deploy to Azure Web App (zip method to bypass node_modules filter)
       - name: Deploy to Azure WebApp
         uses: azure/webapps-deploy@v2
         with:
           app-name: scholargy-dz3lcl3szkm74
           publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-          package: deploy
+          package: deploy.zip
