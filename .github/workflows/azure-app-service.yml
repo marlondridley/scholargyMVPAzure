@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: '22'
 
-      # 3️⃣ Install root dependencies (if any)
+      # 3️⃣ Install root dependencies (hoisted workspace setup)
       - name: Install root dependencies
         run: npm install
 
@@ -33,42 +33,42 @@ jobs:
           npm run build
           cd ..
 
-      # 5️⃣ Install backend dependencies (production only)
-      - name: Install backend dependencies
-        run: |
-          cd backend
-          npm install --production
-          cd ..
-
-      # 6️⃣ Prepare deployment folder
-      # 6️⃣ Prepare deployment folder
+      # 5️⃣ Prepare deployment folder
       - name: Prepare deployment folder
-      run: |
-        rm -rf deploy
-        mkdir -p deploy
+        run: |
+          rm -rf deploy
+          mkdir -p deploy
 
-        # Copy root node_modules (workspace hoisted)
-        cp -r node_modules deploy/node_modules
+          # Copy root node_modules for Azure startup
+          cp -r node_modules deploy/node_modules
 
-        # Copy startup.js directly to deploy root
-        cp startup.js deploy/startup.js
+          # Copy startup.js to root of deploy
+          cp startup.js deploy/startup.js
 
-        # Copy package.json & lock files
-        cp package*.json deploy/
+          # Copy package.json & lock files
+          cp package*.json deploy/
 
-        # Copy server.js if exists
-        cp server.js deploy/ || true
+          # Copy server.js if it exists
+          cp server.js deploy/ || true
 
-        # Copy backend code
-        mkdir -p deploy/backend
-        cp -r backend/* deploy/backend/
+          # Copy backend code
+          mkdir -p deploy/backend
+          cp -r backend/* deploy/backend/
 
-        # Copy built frontend
-        mkdir -p deploy/frontend/build
-        cp -r frontend/build deploy/frontend/build
+          # Copy built frontend output
+          mkdir -p deploy/frontend/build
+          cp -r frontend/build deploy/frontend/build
 
-        # Optional shared directories
-        cp -r public deploy/public || true
-        cp -r services deploy/services || true
-        cp -r utils deploy/utils || true
-        cp -r routes deploy/routes || true
+          # Optional shared directories
+          cp -r public deploy/public || true
+          cp -r services deploy/services || true
+          cp -r utils deploy/utils || true
+          cp -r routes deploy/routes || true
+
+      # 6️⃣ Deploy to Azure Web App
+      - name: Deploy to Azure WebApp
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: scholargy-dz3lcl3szkm74
+          publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+          package: deploy
