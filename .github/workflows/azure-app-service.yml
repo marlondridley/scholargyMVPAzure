@@ -1,6 +1,6 @@
 # .github/workflows/azure-app-service.yml
 
-name: Deploy Monorepo to Azure App Service
+name: Build and Deploy Backend to Azure
 
 on:
   push:
@@ -8,15 +8,43 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Deploy to Azure Web App
+      - name: Set up Node.js version 22
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Build Frontend
+        run: |
+          echo "Building the frontend..."
+          cd frontend
+          npm install
+          npm run build --if-present
+          cd ..
+
+      - name: Move Frontend Build into Backend
+        run: |
+          echo "Moving frontend assets into backend/public..."
+          mkdir -p backend/public
+          mv frontend/build/* backend/public/
+
+      - name: Install Backend Dependencies
+        run: |
+          echo "Installing backend production dependencies..."
+          cd backend
+          npm install --production
+          cd ..
+
+      - name: Deploy Backend to Azure
         uses: azure/webapps-deploy@v2
         with:
           app-name: scholargy-dz3lcl3szkm74
           publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-          package: . # Deploy the entire repository
+          package: ./backend # This is the key change!
