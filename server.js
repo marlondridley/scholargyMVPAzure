@@ -13,10 +13,8 @@ const app = express();
 
 // --- Core Server Configuration ---
 
-// 🚀 Enforce never binding to MSI's port 8081, default to 8080 for safety.
-const PORT = process.env.PORT && process.env.PORT !== '8081'
-  ? process.env.PORT
-  : 8080;
+// 🚀 Use Azure's PORT environment variable or default to 8080 for local development
+const PORT = process.env.PORT || 8080;
 console.log(`📢 Server starting on PORT=${PORT} (Azure override allowed)`);
 
 // --- Security & Middleware Setup ---
