@@ -1,11 +1,15 @@
-# .github/workflows/azure-app-service.yml
-
-name: Build and Deploy Backend to Azure
+name: Build and Deploy to Azure App Service
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  NODE_VERSION: '18.17.0'
 
 jobs:
   build-and-deploy:
@@ -13,101 +17,89 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set up Node.js version 22
-        uses: actions/setup-node@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Build Frontend
+      - name: Install dependencies
         run: |
-          echo "Building the frontend..."
+          echo "📦 Installing root dependencies..."
+          npm ci
+          
+      - name: Build frontend
+        run: |
+          echo "🔨 Building frontend..."
           cd frontend
-          npm install
-          npm run build --if-present
+          npm ci
+          npm run build
           cd ..
-
-      - name: Move Frontend Build into Backend
+          
+      - name: Copy frontend build to public directory
         run: |
-          echo "Moving frontend assets into backend/public..."
-          mkdir -p backend/public
-          mv frontend/build/* backend/public/
-
-      - name: Install Backend Dependencies
+          echo "📁 Copying frontend build to public directory..."
+          mkdir -p public
+          cp -r frontend/build/* public/
+          
+      - name: Run tests
         run: |
-          echo "Installing backend production dependencies..."
-          cd backend
-          npm install --production
-          cd ..
-
-<<<<<<< HEAD
-      - name: Deploy Backend to Azure
-        uses: azure/webapps-deploy@v2
+          echo "🧪 Running tests..."
+          npm test
+          
+      - name: Create deployment package
+        run: |
+          echo "📦 Creating deployment package..."
+          mkdir -p deploy
+          
+          # Copy all backend files
+          cp -r routes deploy/
+          cp -r services deploy/
+          cp -r middleware deploy/
+          cp -r utils deploy/
+          cp -r __tests__ deploy/
+          cp server.js deploy/
+          cp package*.json deploy/
+          cp .deployment deploy/
+          cp web.config deploy/
+          cp ecosystem.config.js deploy/
+          
+          # Copy frontend build
+          cp -r public deploy/
+          
+          # Copy other necessary files
+          cp .gitignore deploy/
+          
+          echo "📋 Deployment package contents:"
+          ls -la deploy/
+          echo "📁 Public directory contents:"
+          ls -la deploy/public/
+          
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
         with:
-          app-name: scholargy-dz3lcl3szkm74
+          app-name: 'scholargy-dz3lcl3szkm74'
           publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-          package: ./backend # This is the key change!
-=======
-        # Copy backend source files (including server.js as main entry point)
-        cp -r backend/* deploy/
-        rm -f deploy/package.json deploy/package-lock.json  # Remove backend package files
-
-        # Copy frontend build into public folder
-        cp -r frontend/build/* deploy/public/
-
-        # Copy root-level config files (with dependencies) - THIS IS THE ONLY package.json
-        cp package*.json deploy/
-
-        echo "Deployment package contents:"
-        ls -la deploy/
-        echo "📁 Root package.json (with all dependencies):"
-        cat deploy/package.json | grep -A 10 '"dependencies"'
-        echo "📁 Verifying express is in dependencies:"
-        grep -i express deploy/package.json
-        echo "📁 Public directory (frontend build):"
-        ls -la deploy/public/
-        echo "📁 Verifying server.js exists:"
-        if [ -f "deploy/server.js" ]; then
-          echo "✅ server.js found"
-        else
-          echo "❌ server.js not found"
-          exit 1
-        fi
-        echo "📁 Verifying package.json start script:"
-        grep -A 1 '"start"' deploy/package.json
-
-    # Step 4: Deploy to Azure App Service
-    - name: 'Deploy to Azure Web App'
-      uses: azure/webapps-deploy@v3
-      with:
-        app-name: 'scholargy-dz3lcl3szkm74'
-        publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-        package: ./deploy
-        
-    # Step 5: Wait for deployment and check health
-    - name: Wait for deployment
-      run: |
-        echo "⏳ Waiting for deployment to complete..."
-        sleep 30
-        
-    - name: Check application health
-      run: |
-        echo "🏥 Checking application health..."
-        # Wait for the application to be ready
-        for i in {1..10}; do
-          echo "Attempt $i: Checking health endpoint..."
-          if curl -f -s "https://scholargy-dz3lcl3szkm74.azurewebsites.net/api/health" > /dev/null; then
-            echo "✅ Application is healthy!"
-            break
-          elif curl -f -s "https://scholargy-dz3zkl3szkm74.azurewebsites.net/api/startup" > /dev/null; then
-            echo "✅ Application startup probe successful!"
-            break
-          else
-            echo "⏳ Application not ready yet, waiting..."
-            sleep 10
-          fi
-        done
-        
->>>>>>> 28fb6e1a057a4835d86bed9d4455af4134ba9cce
+          package: ./deploy
+          
+      - name: Wait for deployment
+        run: |
+          echo "⏳ Waiting for deployment to complete..."
+          sleep 30
+          
+      - name: Check application health
+        run: |
+          echo "🏥 Checking application health..."
+          # Wait for the application to be ready
+          for i in {1..10}; do
+            echo "Attempt $i: Checking health endpoint..."
+            if curl -f -s "https://scholargy-dz3lcl3szkm74.azurewebsites.net/health" > /dev/null; then
+              echo "✅ Application is healthy!"
+              break
+            else
+              echo "⏳ Application not ready yet, waiting..."
+              sleep 10
+            fi
+          done

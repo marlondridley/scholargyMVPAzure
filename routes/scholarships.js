@@ -1,10 +1,7 @@
 const express = require('express');
 const router = express.Router();
-<<<<<<< HEAD
 const { ObjectId } = require('mongodb');
 const { getDB } = require('../db');
-=======
->>>>>>> 28fb6e1a057a4835d86bed9d4455af4134ba9cce
 // Directly require the service. The server's startup logic ensures this is available.
 const scholarshipService = require('../services/scholarshipService');
 
@@ -12,22 +9,6 @@ const scholarshipService = require('../services/scholarshipService');
 const formatCategoryName = (name) => {
   return name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 };
-
-<<<<<<< HEAD
-
-=======
-// GET /api/scholarships/categories
-router.get('/categories', async (req, res) => {
-    // The service is guaranteed to be available, so we call it directly.
-    const categories = await scholarshipService.getScholarshipCategories();
-    const formattedCategories = categories.map(cat => ({
-        id: cat._id,
-        name: formatCategoryName(cat._id),
-        count: cat.count
-    }));
-    res.json({ categories: formattedCategories });
-});
->>>>>>> 28fb6e1a057a4835d86bed9d4455af4134ba9cce
 
 // GET /api/scholarships/deadlines
 router.get('/deadlines', async (req, res) => {
@@ -57,7 +38,6 @@ router.post('/recommendations', async (req, res) => {
     res.json({ recommendations });
 });
 
-<<<<<<< HEAD
 // POST /api/scholarships/stats - Get scholarship statistics for a student profile
 router.post('/stats', async (req, res) => {
     const { studentProfile } = req.body;
@@ -139,7 +119,4 @@ router.get('/:id', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch scholarship.' });
     }
 });
-
-=======
->>>>>>> 28fb6e1a057a4835d86bed9d4455af4134ba9cce
 module.exports = router;

@@ -73,7 +73,6 @@ ${contextText}
   }
 }
 
-<<<<<<< HEAD
 // Get top college matches for a student profile
 async function topMatchesFromProfile(studentProfile) {
   try {
@@ -148,6 +147,3 @@ module.exports = {
   topMatchesFromProfile, 
   scholarshipSummaryFromProfile 
 };
-=======
-module.exports = { performRagQuery };
->>>>>>> 28fb6e1a057a4835d86bed9d4455af4134ba9cce

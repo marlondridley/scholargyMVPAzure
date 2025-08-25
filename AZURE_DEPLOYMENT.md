@@ -31,7 +31,26 @@ scholargyMVPAzure/
 
 ## Quick Deployment
 
-### 1. Run the Deployment Script
+### Option 1: GitHub Actions (Recommended)
+
+The project includes a GitHub Actions workflow that automatically builds and deploys to Azure App Service on every push to the `main` branch.
+
+1. **Set up GitHub Secrets**:
+   - Go to your GitHub repository → Settings → Secrets and variables → Actions
+   - Add `AZURE_PUBLISH_PROFILE` with your Azure App Service publish profile
+
+2. **Push to main branch**:
+   ```bash
+   git add .
+   git commit -m "Deploy to Azure"
+   git push origin main
+   ```
+
+3. **Monitor deployment**:
+   - Go to Actions tab in your GitHub repository
+   - Watch the "Build and Deploy to Azure App Service" workflow
+
+### Option 2: Manual Deployment Script
 
 ```powershell
 # Navigate to the project root
@@ -41,7 +60,7 @@ cd scholargyMVPAzure
 .\deploy-azure.ps1 -ResourceGroupName "scholargy-rg" -AppServiceName "scholargy-app"
 ```
 
-### 2. Set Up Git Remote
+### Option 3: Git-based Deployment
 
 ```bash
 # Add Azure git remote (URL will be provided by the deployment script)
@@ -116,6 +135,29 @@ git remote add azure $gitUrl
 git add .
 git commit -m "Deploy to Azure"
 git push azure main
+```
+
+## GitHub Actions Workflow
+
+The project includes a comprehensive GitHub Actions workflow (`.github/workflows/azure-app-service.yml`) that:
+
+1. **Builds the frontend** using React build process
+2. **Runs tests** to ensure code quality
+3. **Creates deployment package** with all necessary files
+4. **Deploys to Azure App Service** using the Azure WebApps Deploy action
+5. **Performs health checks** to verify successful deployment
+
+### Workflow Steps:
+
+```yaml
+- Install dependencies (root and frontend)
+- Build frontend React application
+- Copy frontend build to public directory
+- Run tests
+- Create deployment package
+- Deploy to Azure App Service
+- Wait for deployment
+- Check application health
 ```
 
 ## Azure App Service & Oryx Build Process

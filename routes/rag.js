@@ -1,7 +1,6 @@
 // backend/routes/rag.js
 const express = require('express');
 const router = express.Router();
-<<<<<<< HEAD
 const { performRagQuery, topMatchesFromProfile, scholarshipSummaryFromProfile } = require('../services/ragService');
 
 // POST /api/rag/top-matches
@@ -50,10 +49,10 @@ router.get('/health', async (req, res) => {
   } catch (error) {
     console.error('❌ RAG health check error:', error.message);
     res.status(500).json({ status: 'unhealthy', error: error.message });
-=======
-const { performRagQuery } = require('../services/ragService');
+  }
+});
 
-// POST /api/rag - performs Retrieval-Augmented Generation
+// POST /api/rag - performs Retrieval-Augmented Generation (legacy endpoint)
 router.post('/', async (req, res) => {
   const { query, history = [] } = req.body;
 
@@ -67,8 +66,5 @@ router.post('/', async (req, res) => {
   } catch (error) {
     console.error('❌ RAG route error:', error.message);
     res.status(500).json({ error: 'Failed to process RAG query.' });
->>>>>>> 28fb6e1a057a4835d86bed9d4455af4134ba9cce
   }
 });
-
-module.exports = router;

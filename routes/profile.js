@@ -14,11 +14,7 @@ router.get('/:userId', verifyUser, async (req, res) => {
         if (!db) {
             return res.status(503).json({ error: 'Database service unavailable' });
         }
-<<<<<<< HEAD
         const profile = await db.collection('user_applications').findOne({ userId: req.params.userId });
-=======
-        const profile = await db.collection('user_profiles').findOne({ userId: req.params.userId });
->>>>>>> 28fb6e1a057a4835d86bed9d4455af4134ba9cce
         if (!profile) {
             return res.status(404).json({ error: 'Profile not found' });
         }
@@ -42,11 +38,7 @@ router.post('/', verifyUser, async (req, res) => {
         if (!db) {
             return res.status(503).json({ error: 'Database service unavailable' });
         }
-<<<<<<< HEAD
         const existingProfile = await db.collection('user_applications').findOne({ userId: userId });
-=======
-        const existingProfile = await db.collection('user_profiles').findOne({ userId: userId });
->>>>>>> 28fb6e1a057a4835d86bed9d4455af4134ba9cce
         if (existingProfile) {
             return res.status(409).json({ error: 'Profile already exists' });
         }
@@ -59,7 +51,6 @@ router.post('/', verifyUser, async (req, res) => {
             roles: ['student'], // Default role
             createdAt: new Date(),
             updatedAt: new Date(),
-<<<<<<< HEAD
             // Student profile fields
             gpa: profileData.gpa || null,
             satScore: profileData.satScore || null,
@@ -80,14 +71,6 @@ router.post('/', verifyUser, async (req, res) => {
         };
         const result = await db.collection('user_applications').insertOne(profileDocument);
         const createdProfile = await db.collection('user_applications').findOne({ _id: result.insertedId });
-=======
-            gpa: null,
-            satScore: null,
-            extracurriculars: null,
-        };
-        const result = await db.collection('user_profiles').insertOne(profileDocument);
-        const createdProfile = await db.collection('user_profiles').findOne({ _id: result.insertedId });
->>>>>>> 28fb6e1a057a4835d86bed9d4455af4134ba9cce
         res.status(201).json(createdProfile);
     } catch (error) {
         console.error('Profile creation error:', error);
@@ -106,11 +89,7 @@ router.put('/:userId', verifyUser, async (req, res) => {
         if (!db) {
             return res.status(503).json({ error: 'Database service unavailable' });
         }
-<<<<<<< HEAD
         const result = await db.collection('user_applications').findOneAndUpdate(
-=======
-        const result = await db.collection('user_profiles').findOneAndUpdate(
->>>>>>> 28fb6e1a057a4835d86bed9d4455af4134ba9cce
             { userId: req.params.userId },
             { $set: { ...profileData, updatedAt: new Date() } },
             { returnDocument: 'after' }
@@ -125,7 +104,6 @@ router.put('/:userId', verifyUser, async (req, res) => {
     }
 });
 
-<<<<<<< HEAD
 // GET /api/profile/:userId/assessment - Get AI-generated profile assessment
 router.get('/:userId/assessment', verifyUser, async (req, res) => {
     if (req.user.id !== req.params.userId) {
@@ -265,7 +243,4 @@ router.post('/:userId/save', verifyUser, async (req, res) => {
         res.status(500).json({ error: 'Failed to save profile data' });
     }
 });
-
-=======
->>>>>>> 28fb6e1a057a4835d86bed9d4455af4134ba9cce
 module.exports = router;
