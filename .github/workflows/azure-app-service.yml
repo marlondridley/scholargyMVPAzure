@@ -42,9 +42,72 @@ jobs:
           npm install --production
           cd ..
 
+<<<<<<< HEAD
       - name: Deploy Backend to Azure
         uses: azure/webapps-deploy@v2
         with:
           app-name: scholargy-dz3lcl3szkm74
           publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
           package: ./backend # This is the key change!
+=======
+        # Copy backend source files (including server.js as main entry point)
+        cp -r backend/* deploy/
+        rm -f deploy/package.json deploy/package-lock.json  # Remove backend package files
+
+        # Copy frontend build into public folder
+        cp -r frontend/build/* deploy/public/
+
+        # Copy root-level config files (with dependencies) - THIS IS THE ONLY package.json
+        cp package*.json deploy/
+
+        echo "Deployment package contents:"
+        ls -la deploy/
+        echo "📁 Root package.json (with all dependencies):"
+        cat deploy/package.json | grep -A 10 '"dependencies"'
+        echo "📁 Verifying express is in dependencies:"
+        grep -i express deploy/package.json
+        echo "📁 Public directory (frontend build):"
+        ls -la deploy/public/
+        echo "📁 Verifying server.js exists:"
+        if [ -f "deploy/server.js" ]; then
+          echo "✅ server.js found"
+        else
+          echo "❌ server.js not found"
+          exit 1
+        fi
+        echo "📁 Verifying package.json start script:"
+        grep -A 1 '"start"' deploy/package.json
+
+    # Step 4: Deploy to Azure App Service
+    - name: 'Deploy to Azure Web App'
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: 'scholargy-dz3lcl3szkm74'
+        publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+        package: ./deploy
+        
+    # Step 5: Wait for deployment and check health
+    - name: Wait for deployment
+      run: |
+        echo "⏳ Waiting for deployment to complete..."
+        sleep 30
+        
+    - name: Check application health
+      run: |
+        echo "🏥 Checking application health..."
+        # Wait for the application to be ready
+        for i in {1..10}; do
+          echo "Attempt $i: Checking health endpoint..."
+          if curl -f -s "https://scholargy-dz3lcl3szkm74.azurewebsites.net/api/health" > /dev/null; then
+            echo "✅ Application is healthy!"
+            break
+          elif curl -f -s "https://scholargy-dz3zkl3szkm74.azurewebsites.net/api/startup" > /dev/null; then
+            echo "✅ Application startup probe successful!"
+            break
+          else
+            echo "⏳ Application not ready yet, waiting..."
+            sleep 10
+          fi
+        done
+        
+>>>>>>> 28fb6e1a057a4835d86bed9d4455af4134ba9cce

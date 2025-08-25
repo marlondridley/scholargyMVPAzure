@@ -32,6 +32,7 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+<<<<<<< HEAD
 // Request logging middleware for debugging and monitoring
 const { requestLogger } = require('./middleware/requestLogger');
 app.use(requestLogger);
@@ -50,6 +51,10 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+=======
+// Enable Cross-Origin Resource Sharing (CORS) for all routes.
+app.use(cors());
+>>>>>>> 28fb6e1a057a4835d86bed9d4455af4134ba9cce
 // Parse JSON and URL-encoded request bodies with a 10mb limit.
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -80,6 +85,7 @@ app.use((req, res, next) => {
   next();
 });
 
+<<<<<<< HEAD
 // --- URL Rewrites for Azure App Service Linux ---
 const { setupUrlRewrites } = require('./middleware/urlRewrites');
 setupUrlRewrites(app);
@@ -109,6 +115,14 @@ if (process.env.NODE_ENV === 'production') {
     }
   }
 }
+=======
+// --- Static File Serving ---
+
+// Determine the path to the frontend build directory based on the environment.
+const frontendBuildPath = process.env.NODE_ENV === 'production'
+  ? path.join(__dirname, 'public')
+  : path.join(__dirname, '..', 'frontend', 'build');
+>>>>>>> 28fb6e1a057a4835d86bed9d4455af4134ba9cce
 console.log(`📁 Serving static files from: ${frontendBuildPath}`);
 app.use(express.static(frontendBuildPath));
 
