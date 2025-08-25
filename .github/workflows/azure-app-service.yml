@@ -65,7 +65,7 @@ jobs:
           echo "📦 Creating deployment package..."
           mkdir -p deploy
           
-          # Copy all backend files
+          # Copy all backend files to deploy root (not in a subdirectory)
           cp -r routes deploy/
           cp -r services deploy/
           cp -r middleware deploy/
@@ -75,7 +75,7 @@ jobs:
           cp package*.json deploy/
           cp ecosystem.config.js deploy/
           
-          # Copy frontend build
+          # Copy frontend build to deploy/public
           cp -r public deploy/
           
           # Copy other necessary files
