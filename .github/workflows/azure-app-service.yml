@@ -39,15 +39,20 @@ jobs:
           rm -rf public/*
           cp -R frontend/build/* public/
 
-      - name: Install backend dependencies
+      - name: Install backend dependencies (including dev for testing)
         run: |
-          echo "📦 Installing backend dependencies..."
-          npm ci --only=production
+          echo "📦 Installing backend dependencies (including dev for testing)..."
+          npm ci
 
       - name: Run tests
         run: |
           echo "🧪 Running tests..."
           npm test
+
+      - name: Install production dependencies only
+        run: |
+          echo "📦 Installing production dependencies only..."
+          npm ci --only=production
 
       - name: Sanitize backend package for Linux
         run: |
