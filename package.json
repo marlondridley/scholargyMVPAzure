@@ -12,7 +12,7 @@
     "build:azure": "npm run build:frontend && npm run copy-frontend",
     "build:frontend": "cd frontend && npm install && npm run build",
     "copy-frontend": "shx cp -r frontend/build/* public/",
-    "postinstall": "npm run build:frontend && npm run copy-frontend",
+    "postinstall": "echo 'Skipping postinstall build for now'",
     "dev:frontend": "cd frontend && npm start",
     "dev:full": "concurrently \"npm run dev\" \"npm run dev:frontend\"",
     "build:ubuntu": "npm run build:frontend && npm run copy-frontend"
@@ -61,7 +61,7 @@
     "tailwindcss": "^3.3.5"
   },
   "engines": {
-    "node": ">=18.0.0",
+    "node": ">=20.0.0",
     "npm": ">=9.0.0"
   },
   "jest": {
