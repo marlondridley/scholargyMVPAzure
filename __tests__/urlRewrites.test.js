@@ -8,7 +8,7 @@ describe('URL Rewrites for Azure App Service Linux', () => {
   beforeEach(() => {
     app = express();
     
-    // Add test routes BEFORE setting up URL rewrites
+    // Add dummy API routes BEFORE setting up URL rewrites
     app.get('/api/test', (req, res) => {
       res.json({ message: 'API route working' });
     });

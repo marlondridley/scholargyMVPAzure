@@ -8,21 +8,61 @@ describe('URL Rewrites Middleware', () => {
   beforeEach(() => {
     app = express();
     
-    // Setup URL rewrites
-    setupUrlRewrites(app);
-    
-    // Add test routes that will be rewritten
-    app.get('/', (req, res) => {
-      res.send('Root route');
-    });
-    
+    // Add test routes BEFORE setting up URL rewrites
     app.get('/api/test', (req, res) => {
       res.json({ message: 'API route working' });
+    });
+    
+    app.get('/api/health', (req, res) => {
+      res.json({ status: 'healthy' });
     });
     
     app.get('/health', (req, res) => {
       res.json({ status: 'healthy' });
     });
+    
+    app.get('/healthz', (req, res) => {
+      res.json({ status: 'healthy' });
+    });
+    
+    app.get('/', (req, res) => {
+      res.send('Root route');
+    });
+    
+    // Setup URL rewrites AFTER adding test routes
+    setupUrlRewrites(app);
+  });
+
+  test('should allow API routes to pass through', async () => {
+    const response = await request(app)
+      .get('/api/test')
+      .expect(200);
+    
+    expect(response.body.message).toBe('API route working');
+  });
+
+  test('should allow API health endpoint to pass through', async () => {
+    const response = await request(app)
+      .get('/api/health')
+      .expect(200);
+    
+    expect(response.body.status).toBe('healthy');
+  });
+
+  test('should allow health endpoint to pass through', async () => {
+    const response = await request(app)
+      .get('/health')
+      .expect(200);
+    
+    expect(response.body.status).toBe('healthy');
+  });
+
+  test('should allow healthz endpoint to pass through', async () => {
+    const response = await request(app)
+      .get('/healthz')
+      .expect(200);
+    
+    expect(response.body.status).toBe('healthy');
   });
 
   test('should rewrite React routes to root', async () => {
@@ -92,22 +132,6 @@ describe('URL Rewrites Middleware', () => {
   test('should rewrite reset-password route to root', async () => {
     const response = await request(app)
       .get('/reset-password')
-      .expect(200);
-    
-    expect(response.text).toBe('Root route');
-  });
-
-  test('should rewrite API routes to root', async () => {
-    const response = await request(app)
-      .get('/api/test')
-      .expect(200);
-    
-    expect(response.text).toBe('Root route');
-  });
-
-  test('should rewrite health endpoint to root', async () => {
-    const response = await request(app)
-      .get('/health')
       .expect(200);
     
     expect(response.text).toBe('Root route');
