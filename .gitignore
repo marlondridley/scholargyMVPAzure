@@ -98,6 +98,8 @@ Thumbs.db
 
 # Azure deployment files
 .azure/
+.deployment
+web.config
 
 # Test files
 test-results/

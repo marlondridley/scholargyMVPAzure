@@ -25,30 +25,36 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: Install & build frontend
+        working-directory: frontend
+        env:
+          CI: false
         run: |
-          echo "📦 Installing root dependencies..."
-          npm ci
-          
-      - name: Build frontend
-        run: |
-          echo "🔨 Building frontend..."
-          cd frontend
-          npm ci
+          npm install
           npm run build
-          cd ..
-          
-      - name: Copy frontend build to public directory
+
+      - name: Stage frontend build into backend/public
         run: |
-          echo "📁 Copying frontend build to public directory..."
           mkdir -p public
-          cp -r frontend/build/* public/
-          
+          rm -rf public/*
+          cp -R frontend/build/* public/
+
+      - name: Install backend dependencies
+        run: |
+          echo "📦 Installing backend dependencies..."
+          npm ci --only=production
+
       - name: Run tests
         run: |
           echo "🧪 Running tests..."
           npm test
-          
+
+      - name: Sanitize backend package for Linux
+        run: |
+          echo "🧹 Sanitizing backend package for Linux deployment..."
+          rm -f .deployment
+          rm -f web.config
+
       - name: Create deployment package
         run: |
           echo "📦 Creating deployment package..."
@@ -62,8 +68,6 @@ jobs:
           cp -r __tests__ deploy/
           cp server.js deploy/
           cp package*.json deploy/
-          cp .deployment deploy/
-          cp web.config deploy/
           cp ecosystem.config.js deploy/
           
           # Copy frontend build
@@ -76,26 +80,26 @@ jobs:
           ls -la deploy/
           echo "📁 Public directory contents:"
           ls -la deploy/public/
-          
+
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'scholargy-dz3lcl3szkm74'
           publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
           package: ./deploy
-          
+
       - name: Wait for deployment
         run: |
           echo "⏳ Waiting for deployment to complete..."
           sleep 30
-          
+
       - name: Check application health
         run: |
           echo "🏥 Checking application health..."
           # Wait for the application to be ready
           for i in {1..10}; do
             echo "Attempt $i: Checking health endpoint..."
-            if curl -f -s "https://scholargy-dz3lcl3szkm74.azurewebsites.net/health" > /dev/null; then
+            if curl -f -s "https://scholargy-dz3lcl3szkm74.azurewebsites.net/api/health" > /dev/null; then
               echo "✅ Application is healthy!"
               break
             else

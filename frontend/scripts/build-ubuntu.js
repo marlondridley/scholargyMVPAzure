@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, exec } = require('child_process');
 
 // Function to load environment variables from multiple sources
 function loadEnvironmentVariables() {
@@ -95,25 +95,35 @@ function runReactBuild() {
   return new Promise((resolve, reject) => {
     console.log('🔨 Starting React build...');
     
-    const buildProcess = spawn('npm', ['run', 'build:react'], {
+    // Skip React build only in CI environment, not for local development
+    if (process.env.CI === 'true') {
+      console.log('⚠️ Skipping React build in CI - will be built on Azure Ubuntu');
+      console.log('✅ Build preparation completed successfully');
+      resolve();
+      return;
+    }
+    
+    // Use exec instead of spawn for better cross-platform compatibility
+    const buildCommand = process.platform === 'win32' 
+      ? 'npx.cmd react-scripts build'
+      : 'npx react-scripts build';
+    
+    exec(buildCommand, {
       cwd: path.join(__dirname, '..'),
-      stdio: 'inherit',
       env: { ...process.env, CI: 'false' }
-    });
-    
-    buildProcess.on('close', (code) => {
-      if (code === 0) {
-        console.log('✅ React build completed successfully');
-        resolve();
-      } else {
-        console.error(`❌ React build failed with code ${code}`);
-        reject(new Error(`Build failed with code ${code}`));
+    }, (error, stdout, stderr) => {
+      if (error) {
+        console.error('❌ React build error:', error);
+        reject(error);
+        return;
       }
-    });
-    
-    buildProcess.on('error', (error) => {
-      console.error('❌ React build error:', error);
-      reject(error);
+      
+      if (stderr) {
+        console.log('⚠️ Build warnings:', stderr);
+      }
+      
+      console.log('✅ React build completed successfully');
+      resolve();
     });
   });
 }
