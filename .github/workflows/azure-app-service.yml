@@ -49,10 +49,10 @@ jobs:
           echo "🧪 Running tests..."
           npm test
 
-      - name: Install production dependencies only
+      - name: Remove node_modules (let Azure install dependencies)
         run: |
-          echo "📦 Installing production dependencies only..."
-          npm ci --only=production
+          echo "🧹 Removing node_modules (Azure will install dependencies)..."
+          rm -rf node_modules
 
       - name: Sanitize backend package for Linux
         run: |
