@@ -1,313 +1,282 @@
-# 🚀 Azure App Service Deployment Guide for Scholargy
+# Azure App Service Environment Deployment Guide
 
-## Overview
-This guide covers deploying the Scholargy MVP to Azure App Service with environment variables configured through Azure App Settings.
+This guide explains how to deploy the Scholargy MVP application to Azure App Service Environment with Ubuntu.
 
-## 📋 Prerequisites
+## Project Structure
 
-### Azure Resources Required:
-- **Azure App Service Plan**: B1 or higher (recommended)
-- **Azure App Service**: Web App with Node.js 22 LTS runtime
-- **Azure Cosmos DB**: For user profiles and application data
-- **Azure Redis Cache**: For session management and caching (optional)
-- **Azure OpenAI**: For AI-powered features
-- **Supabase**: For authentication
-
-### Environment Variables (App Settings):
-Configure these in Azure Portal → App Service → Configuration → Application settings:
-
-```bash
-# Supabase Configuration
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-
-# Database Configuration
-COSMOS_DB_CONNECTION_STRING=your_cosmos_db_connection_string
-DB_NAME=scholargy-db
-
-# Azure OpenAI Configuration
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_API_KEY=your_openai_api_key
-AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
-AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-ada-002
-
-# Frontend Environment Variables
-REACT_APP_SUPABASE_URL=https://your-project.supabase.co
-REACT_APP_SUPABASE_ANON_KEY=your_supabase_anon_key
-
-# Optional Redis Configuration
-AZURE_REDIS_CONNECTION_STRING=your_redis_connection_string
-
-# App Configuration
-NODE_ENV=production
-PORT=8080
+```
+scholargyMVPAzure/
+├── package.json              # Consolidated package.json for both frontend and backend
+├── server.js                 # Main Express.js server
+├── web.config               # IIS configuration for Azure
+├── .deployment              # Azure deployment configuration
+├── deploy-azure.ps1         # PowerShell deployment script
+├── public/                  # Frontend build output (created during build)
+├── frontend/                # React frontend application
+│   ├── package.json         # Frontend dependencies
+│   ├── src/                 # React source code
+│   └── public/              # Frontend static assets
+├── routes/                  # Backend API routes
+├── services/                # Backend business logic
+├── middleware/              # Express middleware
+└── utils/                   # Utility functions
 ```
 
-## 🔧 Azure App Service Configuration
+## Prerequisites
 
-### 1. Create Azure App Service
+1. **Azure CLI** installed and configured
+2. **Node.js 18+** installed locally
+3. **Git** for version control
+4. **PowerShell** (for Windows deployment script)
 
-#### Using Azure CLI:
+## Quick Deployment
+
+### 1. Run the Deployment Script
+
+```powershell
+# Navigate to the project root
+cd scholargyMVPAzure
+
+# Run the deployment script
+.\deploy-azure.ps1 -ResourceGroupName "scholargy-rg" -AppServiceName "scholargy-app"
+```
+
+### 2. Set Up Git Remote
+
 ```bash
-# Login to Azure
-az login
+# Add Azure git remote (URL will be provided by the deployment script)
+git remote add azure <git-url-from-script>
 
-# Create resource group (if needed)
-az group create --name scholargy-rg --location eastus
+# Deploy (Azure will handle the build automatically)
+git add .
+git commit -m "Deploy to Azure"
+git push azure main
+```
 
-# Create App Service Plan
-az appservice plan create --name scholargy-plan --resource-group scholargy-rg --sku B1 --is-linux
+## Manual Deployment Steps
+
+### 1. Create Azure Resources
+
+```bash
+# Create resource group
+az group create --name scholargy-rg --location "East US"
+
+# Create App Service Plan (Linux)
+az appservice plan create \
+  --name scholargy-plan \
+  --resource-group scholargy-rg \
+  --sku B1 \
+  --is-linux
 
 # Create Web App
-az webapp create --name scholargy-mvp-azure --resource-group scholargy-rg --plan scholargy-plan --runtime "NODE|22-lts"
-
-# Configure startup command
-az webapp config set --name scholargy-mvp-azure --resource-group scholargy-rg --startup-file "npm start"
+az webapp create \
+  --name scholargy-app \
+  --resource-group scholargy-rg \
+  --plan scholargy-plan \
+  --runtime "NODE|18-lts"
 ```
 
-#### Using Azure Portal:
-1. Go to Azure Portal → App Services → Create
-2. Select "Web App"
-3. Choose Node.js 22 LTS runtime
-4. Select B1 or higher SKU
-5. Configure startup command: `npm start`
+### 2. Configure App Settings
 
-### 2. Configure Environment Variables (App Settings)
-
-#### Using Azure CLI to set App Settings:
 ```bash
-# Set required environment variables
-az webapp config appsettings set --name scholargy-mvp-azure --resource-group scholargy-rg --settings \
-  SUPABASE_URL="https://your-project.supabase.co" \
-  SUPABASE_SERVICE_ROLE_KEY="your_service_role_key" \
-  COSMOS_DB_CONNECTION_STRING="your_cosmos_db_connection_string" \
-  DB_NAME="scholargy-db" \
-  AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com/" \
-  AZURE_OPENAI_API_KEY="your_openai_api_key" \
-  AZURE_OPENAI_DEPLOYMENT_NAME="gpt-4o" \
-  AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME="text-embedding-ada-002" \
-  REACT_APP_SUPABASE_URL="https://your-project.supabase.co" \
-  REACT_APP_SUPABASE_ANON_KEY="your_supabase_anon_key"
+# Set Node.js version
+az webapp config appsettings set \
+  --name scholargy-app \
+  --resource-group scholargy-rg \
+  --settings WEBSITE_NODE_DEFAULT_VERSION=18.17.0
 
-# Set optional Redis configuration
-az webapp config appsettings set --name scholargy-mvp-azure --resource-group scholargy-rg --settings \
-  AZURE_REDIS_CONNECTION_STRING="your_redis_connection_string"
+# Set startup command (PM2 for production)
+az webapp config set \
+  --name scholargy-app \
+  --resource-group scholargy-rg \
+  --startup-file "pm2 start ecosystem.config.js --no-daemon"
 ```
 
-## 🚀 Deployment Methods
+### 3. Configure Environment Variables
 
-### Method 1: GitHub Actions (Recommended)
+See the "Environment Variables" section below for detailed instructions on setting up environment variables.
 
-#### 1. Create GitHub Secrets:
-Go to your GitHub repository → Settings → Secrets and variables → Actions
-Add these secrets:
-- `AZURE_WEBAPP_PUBLISH_PROFILE`: Download from Azure Portal
-- `AZURE_WEBAPP_NAME`: Your app service name
-- `AZURE_WEBAPP_URL`: Your app service URL
-- `REACT_APP_SUPABASE_URL`: Supabase URL for frontend build
-- `REACT_APP_SUPABASE_ANON_KEY`: Supabase anon key for frontend build
+### 4. Deploy the Application
 
-### Method 2: Manual Deployment
-
-#### 1. Build the Application:
 ```bash
-# Install dependencies
-npm ci
-cd frontend && npm ci && cd ..
+# Enable local git deployment
+az webapp deployment source config-local-git \
+  --name scholargy-app \
+  --resource-group scholargy-rg
 
-# Build frontend
-cd frontend
-npm run build
-cd ..
+# Get the git URL
+gitUrl=$(az webapp deployment source config-local-git \
+  --name scholargy-app \
+  --resource-group scholargy-rg \
+  --query url \
+  --output tsv)
+
+# Add remote and deploy
+git remote add azure $gitUrl
+git add .
+git commit -m "Deploy to Azure"
+git push azure main
 ```
 
-#### 2. Deploy to Azure:
+## Azure App Service & Oryx Build Process
+
+Azure App Service uses Oryx for automated build processes. The build sequence is:
+
+1. **Oryx Detection**: Automatically detects Node.js runtime
+2. **Pre-build Script**: Runs if `PRE_BUILD_SCRIPT_PATH` is set
+3. **npm install**: Installs all dependencies (including devDependencies)
+4. **npm run build**: Runs if `build` script exists in package.json
+5. **npm run build:azure**: Runs if `build:azure` script exists in package.json
+6. **Post-build Script**: Runs if `POST_BUILD_SCRIPT_PATH` is set
+7. **PM2 Startup**: Starts the app with PM2 process manager
+
+### Build Scripts
+
+```json
+{
+  "scripts": {
+    "start": "node server.js",
+    "build": "npm run build:frontend && npm run copy-frontend",
+    "build:azure": "npm run build:frontend && npm run copy-frontend",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "copy-frontend": "shx cp -r frontend/build/* public/",
+    "postinstall": "npm run build:frontend && npm run copy-frontend"
+  }
+}
+```
+
+
+
+## Server Configuration
+
+The `server.js` is configured to:
+
+1. **Serve API routes** under `/api/*`
+2. **Serve static files** from the `public/` directory
+3. **Handle URL rewrites** for Azure App Service Linux
+4. **Fallback to React app** for client-side routing
+5. **Handle health checks** at `/health`
+
+### URL Rewrites for Azure App Service Linux
+
+Since Azure App Service for Linux doesn't use IIS, URL rewrites are handled directly in the Node.js application using `express-urlrewrite`:
+
+```javascript
+// API routes
+app.use(rewrite('/api/*', '/api/$1'));
+
+// Static assets
+app.use(rewrite('/static/*', '/static/$1'));
+app.use(rewrite('/js/*', '/js/$1'));
+app.use(rewrite('/css/*', '/css/$1'));
+
+// React Router paths
+app.use(rewrite('/dashboard', '/'));
+app.use(rewrite('/profile', '/'));
+app.use(rewrite('/scholarships', '/'));
+// ... other React routes
+```
+
+## Web.config Configuration (Windows Only)
+
+The `web.config` file configures IIS for Windows deployments:
+
+1. **Route API requests** to Node.js
+2. **Serve static files** directly
+3. **Handle React routing** with fallback to `index.html`
+
+**Note**: For Azure App Service Linux (Ubuntu), URL rewrites are handled by the Node.js application using `express-urlrewrite` middleware instead of IIS configuration.
+
+## Environment Variables
+
+Azure App Service environment variables are accessed using standard Node.js `process.env` pattern:
+
+```javascript
+// Access environment variables
+const nodeEnv = process.env.NODE_ENV;
+const port = process.env.PORT || 8080;
+const mongoUri = process.env.MONGODB_URI;
+```
+
+### Backend Variables
+- `NODE_ENV`: Set to `production`
+- `PORT`: Server port (default: 8080)
+- `MONGODB_URI`: MongoDB connection string
+- `REDIS_URL`: Redis connection string
+- `SUPABASE_URL`: Supabase project URL
+- `SUPABASE_ANON_KEY`: Supabase anonymous key
+- `OPENAI_API_KEY`: OpenAI API key
+- `AZURE_OPENAI_ENDPOINT`: Azure OpenAI endpoint
+- `AZURE_OPENAI_API_KEY`: Azure OpenAI API key
+
+### Frontend Variables
+- `REACT_APP_SUPABASE_URL`: Supabase project URL
+- `REACT_APP_SUPABASE_ANON_KEY`: Supabase anonymous key
+- `REACT_APP_API_URL`: Backend API URL
+- `REACT_APP_GOOGLE_CLIENT_ID`: Google OAuth client ID
+
+### Setting Environment Variables
+
+Set environment variables in Azure Portal or via Azure CLI:
+
 ```bash
-# Create deployment package
-zip -r deploy.zip . -x "node_modules/*" "frontend/node_modules/*" ".git/*"
-
-# Deploy to Azure App Service
-az webapp deployment source config-zip --resource-group scholargy-rg --name scholargy-mvp-azure --src deploy.zip
+az webapp config appsettings set \
+  --name scholargy-app \
+  --resource-group scholargy-rg \
+  --settings \
+    NODE_ENV=production \
+    PORT=8080 \
+    MONGODB_URI="your-mongodb-connection-string" \
+    REDIS_URL="your-redis-connection-string" \
+    SUPABASE_URL="your-supabase-url" \
+    SUPABASE_ANON_KEY="your-supabase-anon-key" \
+    OPENAI_API_KEY="your-openai-api-key" \
+    AZURE_OPENAI_ENDPOINT="your-azure-openai-endpoint" \
+    AZURE_OPENAI_API_KEY="your-azure-openai-key" \
+    REACT_APP_SUPABASE_URL="your-supabase-url" \
+    REACT_APP_SUPABASE_ANON_KEY="your-supabase-anon-key" \
+    REACT_APP_API_URL="https://scholargy-app.azurewebsites.net" \
+    REACT_APP_GOOGLE_CLIENT_ID="your-google-client-id"
 ```
 
+## Troubleshooting
 
+### Common Issues
 
-## 📁 Application Structure
+1. **Build Failures**: Check Node.js version compatibility
+2. **Environment Variables**: Ensure all required variables are set
+3. **CORS Issues**: Verify CORS configuration in `server.js`
+4. **Static File Serving**: Check `public/` directory exists and contains build files
 
-```
-scholargy-mvp-azure/
-├── backend/           # Express.js API server
-├── frontend/          # React.js application
-├── frontend/build/    # Built React app (served by Azure)
-├── startup.js         # Azure startup script
-├── web.config         # IIS configuration (Windows)
-├── package.json       # Root package.json
-└── .deployment        # Azure deployment config
-```
+### Logs
 
-## 🔄 Deployment Process
+View application logs in Azure Portal:
+1. Go to your App Service
+2. Navigate to "Log stream"
+3. Monitor real-time logs
 
-### GitHub Actions Workflow:
-1. **Checkout**: Clone repository
-2. **Setup Node.js 22**: Install Node.js 22 LTS
-3. **Install Dependencies**: Install all npm packages
-4. **Build Frontend**: Build React application
-5. **Prepare Package**: Create deployment package
-6. **Deploy**: Deploy to Azure App Service
+### Health Check
 
-### Manual Deployment:
+Test the application health:
 ```bash
-# Run deployment script
-chmod +x deploy-azure.sh
-./deploy-azure.sh
-
-# Deploy to Azure
-az webapp deployment source config-zip --resource-group scholargy-rg --name scholargy-mvp-azure --src deploy.zip
+curl https://your-app-name.azurewebsites.net/health
 ```
 
-## 🛠️ Configuration Files
+## Monitoring
 
-### web.config (IIS Configuration)
-- Routes API requests to backend
-- Serves static files from frontend/build
-- Handles React routing
+- **Application Insights**: Enable for detailed monitoring
+- **Log Analytics**: Configure for centralized logging
+- **Azure Monitor**: Set up alerts for performance issues
 
-### startup.js (Node.js Startup)
-- Initializes backend server
-- Sets environment variables
-- Handles graceful shutdown
+## Security Considerations
 
-### .deployment
-- Configures Azure deployment command
+1. **Environment Variables**: Store sensitive data in Azure Key Vault
+2. **HTTPS**: Azure App Service provides SSL certificates
+3. **CORS**: Configure allowed origins properly
+4. **Rate Limiting**: Already configured in `server.js`
 
-## 🔍 Monitoring & Logging
+## Scaling
 
-### Azure Application Insights:
-```bash
-# Enable Application Insights
-az monitor app-insights component create --app scholargy-insights --location eastus --resource-group scholargy-rg --application-type web
-```
-
-### Log Streaming:
-```bash
-# Stream application logs
-az webapp log tail --name scholargy-mvp-azure --resource-group scholargy-rg
-```
-
-## 🚨 Common Issues and Solutions
-
-### 1. Environment Variable Issues:
-**Problem**: Application fails to start due to missing environment variables
-**Solution**: 
-- Verify all required app settings are configured in Azure Portal
-- Check that variable names match exactly (case-sensitive)
-- Restart the app service after adding new settings
-
-### 2. Build Failures:
-**Problem**: Frontend build fails during deployment
-**Solution**:
-- Ensure all frontend dependencies are installed
-- Check that build script exists in `frontend/package.json`
-- Verify Node.js version compatibility
-
-### 3. Database Connection Issues:
-**Problem**: Application can't connect to Cosmos DB
-**Solution**:
-- Verify `COSMOS_DB_CONNECTION_STRING` is correct
-- Check that `DB_NAME` is set
-- Ensure Cosmos DB is accessible from App Service
-
-### 4. Authentication Issues:
-**Problem**: Supabase authentication not working
-**Solution**:
-- Verify Supabase URL and keys are correct
-- Check that both frontend and backend Supabase variables are set
-- Ensure Supabase project is properly configured
-
-### Debug Commands:
-```bash
-# Check Node.js version
-node --version
-
-# Check npm version
-npm --version
-
-# List installed packages
-npm ls --depth=0
-
-# Test startup script
-node startup.js
-```
-
-## 📊 Performance Optimization
-
-### Azure App Service Recommendations:
-1. **Use B1 or higher SKU** for better performance
-2. **Enable Application Insights** for monitoring
-3. **Configure auto-scaling** based on CPU/memory
-4. **Use Azure CDN** for static assets
-5. **Enable compression** for better response times
-
-### Node.js Optimization:
-1. **Set NODE_ENV=production**
-2. **Use PM2** for process management (optional)
-3. **Enable gzip compression**
-4. **Optimize database connections**
-
-## 🔐 Security
-
-### Azure Security Features:
-1. **HTTPS Only**: Enable in Azure Portal
-2. **Authentication**: Configure Azure AD if needed
-3. **Network Security**: Use VNet integration if required
-4. **Secrets Management**: Use Azure Key Vault for sensitive data
-
-### Application Security:
-1. **Environment Variables**: Store secrets in Azure App Settings
-2. **CORS Configuration**: Configure in backend/server.js
-3. **Input Validation**: Implement in API routes
-4. **Rate Limiting**: Consider implementing
-
-## 📈 Scaling
-
-### Horizontal Scaling:
-```bash
-# Scale to multiple instances
-az appservice plan update --name scholargy-plan --resource-group scholargy-rg --sku S1
-```
-
-### Auto-scaling Rules:
-1. **CPU-based**: Scale when CPU > 70%
-2. **Memory-based**: Scale when memory > 80%
-3. **Time-based**: Scale during peak hours
-
-## 🎯 Success Metrics
-
-### Deployment Success:
-- ✅ Application starts without errors
-- ✅ All API endpoints responding
-- ✅ Frontend loads correctly
-- ✅ Authentication working
-- ✅ Database operations successful
-- ✅ AI features functional
-
-### Performance Metrics:
-- **Response Time**: < 2 seconds for API calls
-- **Uptime**: > 99.9%
-- **Error Rate**: < 1%
-- **Memory Usage**: < 80% of allocated memory
-
-## 📞 Support
-
-For deployment issues:
-1. Check Azure App Service logs
-2. Verify environment variables
-3. Test locally with same configuration
-4. Review GitHub Actions workflow logs
-
----
-
-**Last Updated**: December 2024
-**Node.js Version**: 22.17.1 LTS
-**Runtime**: Azure App Service (Linux)
-**Environment**: Production with Azure App Settings 
+- **Vertical Scaling**: Upgrade App Service Plan tier
+- **Horizontal Scaling**: Enable auto-scaling rules
+- **Load Balancing**: Use Azure Application Gateway if needed

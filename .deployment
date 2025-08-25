@@ -1,6 +1,2 @@
 [config]
-project = backend
-SCM_DO_BUILD_DURING_DEPLOYMENT = true
-
-[post-build]  
-command = bash deploy.sh
+command = npm run build:azure

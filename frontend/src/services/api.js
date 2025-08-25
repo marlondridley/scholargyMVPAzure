@@ -1,279 +1,239 @@
-// frontend/src/services/api.js
+// src/services/api.js
+// Single, consolidated file for all API interactions
 import { supabase } from '../utils/supabase';
 
-const API_BASE_URL = '/api';
+// Get API URL from environment variables with fallback
+const getApiUrl = () => {
+    // Try different methods to get the API URL
+    if (typeof window !== 'undefined' && window.__ENV__ && window.__ENV__.REACT_APP_API_URL) {
+        return window.__ENV__.REACT_APP_API_URL;
+    }
+    if (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL) {
+        return process.env.REACT_APP_API_URL;
+    }
+    return '/api'; // Fallback to relative path
+};
 
-// Helper function to get secure authentication headers
+const API_BASE_URL = getApiUrl();
+
 const getAuthHeaders = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    if (!token) {
-        console.error("No auth token found for API request.");
-        return { 'Content-Type': 'application/json' };
-    }
-    return {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-    };
-};
-
-// --- Profile Management (Secure) ---
-export const getProfile = async (userId) => {
     try {
-        const headers = await getAuthHeaders();
-        const response = await fetch(`${API_BASE_URL}/profile/${userId}`, { headers });
-        if (response.status === 404) return null;
-        if (!response.ok) throw new Error("Failed to fetch profile");
-        return await response.json();
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (!token) throw new Error("Authentication token not found.");
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        };
     } catch (error) {
-        console.error(error);
-        throw error;
+        console.error('Failed to get auth headers:', error);
+        throw new Error("Authentication failed. Please log in again.");
     }
 };
 
-export const createProfile = async (userId, profileData) => {
+export const makeRequest = async (endpoint, options = {}, requireAuth = false) => {
     try {
-        const headers = await getAuthHeaders();
-        const response = await fetch(`${API_BASE_URL}/profile`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ userId, profileData }),
-        });
-        if (!response.ok) throw new Error("Failed to create profile");
-        return await response.json();
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
-};
-
-export const updateProfile = async (userId, profileData) => {
-    try {
-        const headers = await getAuthHeaders();
-        const response = await fetch(`${API_BASE_URL}/profile/${userId}`, {
-            method: 'PUT',
-            headers,
-            body: JSON.stringify({ profileData }),
-        });
-        if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.error || "Failed to update profile");
+        const url = `${API_BASE_URL}${endpoint}`;
+        let headers = { 'Content-Type': 'application/json' };
+        if (requireAuth) {
+            try {
+                headers = await getAuthHeaders();
+            } catch (authError) {
+                console.error('Authentication failed:', authError);
+                throw new Error('Authentication required. Please log in again.');
+            }
         }
-        return await response.json();
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
-};
-
-
-// --- User Stats & Applications (Secure) ---
-export const trackApplication = async (userId, scholarship) => {
-    try {
-        const headers = await getAuthHeaders();
-        const response = await fetch(`${API_BASE_URL}/user/applications`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-                scholarshipId: scholarship._id,
-                amount: scholarship.award_info?.funds?.amount || 0,
-            }),
-        });
-        if (!response.ok) throw new Error('Failed to track application');
-        return await response.json();
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
-};
-
-export const getUserStats = async (userId) => {
-    try {
-        const headers = await getAuthHeaders();
-        const response = await fetch(`${API_BASE_URL}/user/stats/${userId}`, { headers });
-        if (!response.ok) return { activeApps: 0, potentialAid: 0 };
-        return await response.json();
-    } catch (error) {
-        console.error(error);
-        return { activeApps: 0, potentialAid: 0 };
-    }
-};
-
-// --- Institution and College Functions ---
-export const searchInstitutions = async (searchConfig) => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/institutions/search`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(searchConfig),
-        });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return await response.json();
-    } catch (error) {
-        console.error("Failed to search for institutions:", error);
-        return { data: [], pagination: {} };
-    }
-};
-
-export const getInstitutionDetails = async (unitId) => {
-    if (!unitId) return null;
-    try {
-        const response = await fetch(`${API_BASE_URL}/institutions/${unitId}`);
+        
+        // Configure fetch options
+        // We use Bearer tokens in Authorization header, not cookies.
+        // For cross-origin, omit credentials to avoid CORS credential requirements.
+        const fetchOptions = {
+            ...options,
+            headers: { ...headers, ...options.headers },
+            credentials: 'omit',
+            mode: 'cors',
+        };
+        
+        const response = await fetch(url, fetchOptions);
         if (!response.ok) {
-            if (response.status === 404) return null;
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
-        return await response.json();
+        return response.json();
     } catch (error) {
-        console.error(`Failed to fetch institution ${unitId}:`, error);
-        return null;
+        console.error(`API request failed for ${endpoint}:`, error);
+        
+        // Check if it's a network error (backend not running)
+        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            console.warn('Backend appears to be offline. Using fallback data.');
+            throw new Error('Backend service unavailable. Please ensure the backend is running.');
+        }
+        
+        throw error;
     }
 };
 
-export const calculateProbabilities = async (studentProfile, collegeIds) => {
+// --- Dashboard Functions ---
+export const getTopMatches = async (userId = null) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/probability/calculate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ studentProfile, collegeIds }),
-        });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return await response.json();
+        const params = userId ? `?userId=${userId}` : '';
+        return await makeRequest(`/dashboard/top-matches${params}`);
     } catch (error) {
-        console.error("Failed to calculate probabilities:", error);
-        return { results: [] };
+        console.error('getTopMatches failed, returning fallback data:', error);
+        return { results: [] }; // Safe fallback
     }
 };
 
-// --- RAG and AI Functions ---
-export const sendRagQuery = async (query, history) => {
+export const getScholarshipStats = async (userId = null) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/rag/query`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question: query, history }),
-        });
-        if (!response.ok) throw new Error('Failed to fetch RAG results');
-        return await response.json();
+        const params = userId ? `?userId=${userId}` : '';
+        return await makeRequest(`/dashboard/scholarship-stats${params}`);
     } catch (error) {
-        console.error('RAG service error:', error);
-        return { answer: "I'm sorry, but I'm having trouble connecting to my knowledge base right now." };
-    }
-};
-
-// --- Scholarship Functions ---
-export const searchScholarships = async (studentProfile, options = {}) => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/scholarships/search`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ studentProfile, ...options }),
-        });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return await response.json();
-    } catch (error) {
-        console.error("Failed to search scholarships:", error);
-        return { scholarships: [] };
-    }
-};
-
-export const getScholarshipStats = async () => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/scholarships/stats`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return await response.json();
-    } catch (error) {
-        console.error("Failed to get scholarship stats:", error);
-        return { totalScholarships: 0, totalAmount: 0, averageAmount: 0 };
-    }
-};
-
-export const getScholarshipRecommendations = async (studentProfile) => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/scholarships/recommendations`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ studentProfile }),
-        });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return await response.json();
-    } catch (error) {
-        console.error("Failed to get scholarship recommendations:", error);
-        return { recommendations: [] };
-    }
-};
-
-export const getScholarshipCategories = async () => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/scholarships/categories`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return await response.json();
-    } catch (error) {
-        console.error("Failed to get scholarship categories:", error);
-        return { categories: [] };
-    }
-};
-
-export const searchScholarshipsByText = async (searchTerm, filters = {}) => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/scholarships/search-text`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ searchTerm, filters }),
-        });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return await response.json();
-    } catch (error) {
-        console.error("Failed to search scholarships by text:", error);
-        return { scholarships: [] };
-    }
-};
-
-export const advancedScholarshipMatch = async (studentProfile) => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/matching/advanced`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ studentProfile }),
-        });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return await response.json();
-    } catch (error) {
-        console.error("Failed to perform advanced scholarship matching:", error);
-        return { matches: [] };
-    }
-};
-
-export const getScholarshipsByCategory = async (category) => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/scholarships/category/${encodeURIComponent(category)}`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return await response.json();
-    } catch (error) {
-        console.error("Failed to get scholarships by category:", error);
-        return { scholarships: [] };
-    }
-};
-
-export const getProfileAssessment = async (userId) => {
-    try {
-        const headers = await getAuthHeaders();
-        const response = await fetch(`${API_BASE_URL}/profile/assessment/${userId}`, { headers });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return await response.json();
-    } catch (error) {
-        console.error("Failed to get profile assessment:", error);
-        return { assessment: null };
+        console.error('getScholarshipStats failed, returning fallback data:', error);
+        return { totalEligibleAmount: 0, opportunities: [] }; // Safe fallback
     }
 };
 
 export const getUpcomingDeadlines = async (days = 30) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/scholarships/deadlines?days=${days}`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return await response.json();
+        return await makeRequest(`/dashboard/upcoming-deadlines?days=${days}`);
     } catch (error) {
-        console.error("Failed to get upcoming deadlines:", error);
-        return { upcoming_deadlines: [] };
+        console.error('getUpcomingDeadlines failed, returning fallback data:', error);
+        return { deadlines: [] }; // Safe fallback
     }
 };
+
+export const getNextStepsData = (studentProfile, collegeMatches = [], scholarships = [], userId = null) => {
+    const payload = { studentProfile, collegeMatches, scholarships };
+    if (userId) payload.userId = userId;
+    return makeRequest('/dashboard/next-steps', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    }, true);
+};
+
+// --- Profile Management ---
+export const getProfile = (userId) => makeRequest(`/profile/${userId}`, {}, true);
+export const createProfile = (userId, profileData) => makeRequest('/profile', { 
+    method: 'POST', 
+    body: JSON.stringify({ profileData }) 
+}, true);
+export const updateProfile = (userId, profileData) => makeRequest(`/profile/${userId}`, { 
+    method: 'PUT', 
+    body: JSON.stringify({ profileData }) 
+}, true);
+// Generate an AI assessment of the provided profile data
+// Backend expects profile data in the request body rather than a user ID
+export const getProfileAssessment = (profileData) => makeRequest('/profile/assessment', {
+    method: 'POST',
+    body: JSON.stringify({ profileData })
+}, true);
+export const saveProfile = (userId, profileData) => makeRequest(`/profile/${userId}/save`, {
+    method: 'POST',
+    body: JSON.stringify({ profileData })
+}, true);
+
+// --- User Stats ---
+export const getUserStats = (userId) => makeRequest(`/user/stats/${userId}`, {}, true);
+
+// --- Institution and College Functions ---
+export const searchInstitutions = (searchConfig) => makeRequest('/institutions/search', { 
+    method: 'POST', 
+    body: JSON.stringify(searchConfig) 
+});
+export const getInstitutionDetails = (unitId) => makeRequest(`/institutions/${unitId}`);
+export const getInstitutionsByIds = async (unitIds) => {
+    try {
+        const response = await makeRequest('/institutions/batch', { 
+            method: 'POST', 
+            body: JSON.stringify({ unitIds }) 
+        });
+        return response.institutions || []; // Return the institutions array from the response
+    } catch (error) {
+        console.error('getInstitutionsByIds failed, returning fallback data:', error);
+        return []; // Safe fallback
+    }
+};
+
+// --- Probability and Admission Functions ---
+export const calculateProbabilities = (studentProfile, collegeIds) => makeRequest('/probability/calculate', { 
+    method: 'POST', 
+    body: JSON.stringify({ studentProfile, collegeIds }) 
+});
+
+// --- RAG and AI Functions ---
+export const sendRagQuery = (query, context = []) => makeRequest('/rag/query', { 
+    method: 'POST', 
+    body: JSON.stringify({ query, context }) 
+});
+
+export const getTopMatchesFromRag = (studentProfile) => makeRequest('/rag/top-matches', {
+    method: 'POST',
+    body: JSON.stringify({ studentProfile })
+});
+
+export const getScholarshipSummary = (studentProfile, scholarshipRecommendations = []) => makeRequest('/rag/scholarships', {
+    method: 'POST',
+    body: JSON.stringify({ studentProfile, scholarshipRecommendations })
+});
+
+// --- Scholarship Functions ---
+export const searchScholarships = (params) => makeRequest('/scholarships/search', { 
+    method: 'POST', 
+    body: JSON.stringify(params) 
+});
+
+export const getScholarshipStatsByProfile = (studentProfile) => makeRequest('/scholarships/stats', {
+    method: 'POST',
+    body: JSON.stringify({ studentProfile })
+});
+
+export const getUpcomingScholarshipDeadlines = (days = 30) => makeRequest(`/scholarships/upcoming-deadlines?days=${days}`);
+
+// --- Article Functions ---
+export const searchArticles = (query) => makeRequest(`/articles/search?q=${encodeURIComponent(query)}`);
+
+export const findMatchingScholarships = (studentProfile) => makeRequest('/matching/scholarships', { 
+    method: 'POST', 
+    body: JSON.stringify({ studentProfile }) 
+}, true);
+
+export const getScholarshipById = async (id) => {
+    try {
+        const response = await makeRequest(`/scholarships/${id}`);
+        return response.scholarship || null; // Return the scholarship object from the response
+    } catch (error) {
+        console.error('getScholarshipById failed:', error);
+        return null; // Safe fallback
+    }
+};
+
+// --- StudentVue Functions ---
+export const getStudentVueData = (studentProfile) => makeRequest('/studentvue', {
+    method: 'POST',
+    body: JSON.stringify({ studentProfile })
+}, true);
+
+// --- Report Generation ---
+export const generateReport = (studentProfile, collegeData) => makeRequest('/report/generate', {
+    method: 'POST',
+    body: JSON.stringify({ studentProfile, collegeData })
+}, true);
+
+// --- Career Forecaster ---
+export const getCareerForecast = (studentProfile, careerGoals) => makeRequest('/forecaster/predict', {
+    method: 'POST',
+    body: JSON.stringify({ studentProfile, careerGoals })
+}, true);
+
+// --- User Applications and History ---
+export const getUserApplications = (userId) => makeRequest(`/user/applications/${userId}`, {}, true);
+export const getUserSavedScholarships = (userId) => makeRequest(`/user/saved-scholarships/${userId}`, {}, true);
+export const saveScholarship = (userId, scholarshipId) => makeRequest('/user/save-scholarship', {
+    method: 'POST',
+    body: JSON.stringify({ userId, scholarshipId })
+}, true);
+export const removeSavedScholarship = (userId, scholarshipId) => makeRequest('/user/remove-scholarship', {
+    method: 'DELETE',
+    body: JSON.stringify({ userId, scholarshipId })
+}, true);
